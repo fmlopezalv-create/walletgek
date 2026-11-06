@@ -1,0 +1,14 @@
+# Dependencias y artefactos
+node_modules/
+build/
+.dart_tool/
+
+# Secretos y entorno
+.env
+.env.*
+!.env.example
+
+# Logs y temporales
+*.log
+.DS_Store
+Thumbs.db
