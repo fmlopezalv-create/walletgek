@@ -4,7 +4,7 @@ services:
     env: node
     rootDir: backend
     buildCommand: npm install && npx prisma generate
-    startCommand: npx prisma migrate deploy && node src/index.js
+    startCommand: npm start
     envVars:
       - key: NODE_VERSION
         value: 18
@@ -14,5 +14,3 @@ services:
         sync: false
       - key: DEEPSEEK_API_KEY
         sync: false
-      - key: PORT
-        value: 10000

@@ -1,3 +1,9 @@
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { cleanNeonUrl } = require('./dbUrl');
+
+const prisma = new PrismaClient({
+  datasources: {
+    db: { url: cleanNeonUrl(process.env.DATABASE_URL) },
+  },
+});
 module.exports = prisma;
