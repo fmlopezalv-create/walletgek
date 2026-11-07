@@ -1649,8 +1649,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     size: 20,
                   ),
                 ),
-                title: Text(recent[i].category?.name ??
-                    (recent[i].type == 'income' ? 'Ingreso' : 'Gasto')),
+                title: Text(recent[i].displayTitle),
                 subtitle: Text(_formatDate(recent[i].date)),
                 trailing: MoneyText(
                   recent[i].amount,

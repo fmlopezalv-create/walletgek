@@ -77,29 +77,33 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
         text: r.amount.toStringAsFixed(2));
     final amount = await showDialog<double>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Registrar cobro'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: InputDecoration(
-            labelText: 'Monto cobrado',
-            prefixText: '${AppState.instance.symbol} ',
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Registrar cobro'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Monto cobrado',
+              prefixText: '${AppState.instance.symbol} ',
+            ),
           ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancelar')),
+            FilledButton(
+              onPressed: () {
+                final v = double.tryParse(
+                    controller.text.replaceAll(',', '.'));
+                Navigator.of(ctx).pop(v);
+              },
+              child: const Text('Cobrar'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancelar')),
-          FilledButton(
-            onPressed: () {
-              final v = double.tryParse(controller.text.replaceAll(',', '.'));
-              Navigator.of(ctx).pop(v);
-            },
-            child: const Text('Cobrar'),
-          ),
-        ],
       ),
     );
     if (amount == null || amount <= 0) return;
@@ -117,47 +121,44 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
 
   /// Tras registrar un cobro, ofrece registrarlo como ingreso.
   Future<void> _askRegisterIncome(String person, double amount) async {
-    final register = await showModalBottomSheet<bool>(
+    final nameController = TextEditingController(text: 'Cobro $person');
+    final result = await showDialog<String>(
       context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Registrar como ingreso?'),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.payments_outlined,
-                  color: AppColors.emerald),
-              title: Text('Cobro de $person registrado'),
-              subtitle: Text(
-                  '¿Registrar ${AppState.instance.formatAmount(amount)} como ingreso?'),
+            Text(
+                '${AppState.instance.formatAmount(amount)} de "$person"'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: nameController,
+              autofocus: true,
+              decoration:
+                  const InputDecoration(labelText: 'Nombre del ingreso'),
             ),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: const Text('Ahora no'),
-                  ),
-                ),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    child: const Text('Registrar ingreso'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Ahora no'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(ctx).pop(nameController.text.trim()),
+            child: const Text('Registrar ingreso'),
+          ),
+        ],
       ),
     );
-    if (register != true || !mounted) return;
+    if (result == null || !mounted) return;
     try {
       await _txService.createTransaction(
         amount: amount,
         type: 'income',
-        note: 'Cobro de $person',
+        note: result.isEmpty ? 'Cobro $person' : result,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

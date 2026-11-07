@@ -177,100 +177,114 @@ class _DebtsScreenState extends State<DebtsScreen> {
   Future<void> _payDebt(Debt debt) async {
     final amount = TextEditingController();
     final cuotas = TextEditingController(text: '1');
+    var processing = false;
     await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Pagar a ${debt.name}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: amount,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                  labelText: 'Monto',
-                  prefixText: '${AppState.instance.symbol} '),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: cuotas,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Cuotas que cubre'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text('Pagar a ${debt.name}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: amount,
+                autofocus: true,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                    labelText: 'Monto',
+                    prefixText: '${AppState.instance.symbol} '),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: cuotas,
+                keyboardType: TextInputType.number,
+                decoration:
+                    const InputDecoration(labelText: 'Cuotas que cubre'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancelar')),
+            FilledButton(
+              onPressed: processing
+                  ? null
+                  : () async {
+                      final v =
+                          double.tryParse(amount.text.replaceAll(',', '.'));
+                      if (v == null || v <= 0) return;
+                      setDialogState(() => processing = true);
+                      try {
+                        await _service.payDebt(debt.id, v,
+                            cuotas: int.tryParse(cuotas.text) ?? 1);
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                        _load();
+                        _askRegisterExpense(debt.name, v);
+                      } catch (e) {
+                        setDialogState(() => processing = false);
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(content: Text('Error: $e')));
+                        }
+                      }
+                    },
+              child: processing
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Pagar'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancelar')),
-          FilledButton(
-            onPressed: () async {
-              final v = double.tryParse(amount.text.replaceAll(',', '.'));
-              if (v == null || v <= 0) return;
-              try {
-                await _service.payDebt(debt.id, v,
-                    cuotas: int.tryParse(cuotas.text) ?? 1);
-                if (ctx.mounted) Navigator.of(ctx).pop();
-                _load();
-                _askRegisterExpense(debt.name, v);
-              } catch (e) {
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx)
-                      .showSnackBar(SnackBar(content: Text('Error: $e')));
-                }
-              }
-            },
-            child: const Text('Pagar'),
-          ),
-        ],
       ),
     );
   }
 
   /// Tras registrar un pago, ofrece registrar el gasto correspondiente.
   Future<void> _askRegisterExpense(String debtName, double amount) async {
-    final register = await showModalBottomSheet<bool>(
+    final nameController =
+        TextEditingController(text: 'Pago $debtName');
+    final result = await showDialog<String>(
       context: context,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
+      builder: (ctx) => AlertDialog(
+        title: Text('¿Registrar como gasto?'),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.receipt_long,
-                  color: AppColors.coral),
-              title: Text('Pago de $debtName registrado'),
-              subtitle: Text(
-                  '¿Registrar ${AppState.instance.formatAmount(amount)} como gasto?'),
+            Text(
+                '${AppState.instance.formatAmount(amount)} por "$debtName"'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: nameController,
+              autofocus: true,
+              decoration:
+                  const InputDecoration(labelText: 'Nombre del gasto'),
             ),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: const Text('Ahora no'),
-                  ),
-                ),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    child: const Text('Registrar gasto'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Ahora no'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(ctx).pop(nameController.text.trim()),
+            child: const Text('Registrar gasto'),
+          ),
+        ],
       ),
     );
-    if (register != true || !mounted) return;
+    if (result == null || !mounted) return;
     try {
       await _txService.createTransaction(
         amount: amount,
         type: 'expense',
-        note: 'Pago de $debtName',
+        note: result.isEmpty ? 'Pago $debtName' : result,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

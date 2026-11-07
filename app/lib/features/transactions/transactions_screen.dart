@@ -193,13 +193,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           ),
         ),
         title: Text(
-          t.category?.name ?? (isIncome ? 'Ingreso' : 'Gasto'),
+          t.displayTitle,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
           [
             _formatDate(t.date),
-            if (t.note != null && t.note!.isNotEmpty) t.note!,
+            if (t.category != null && t.note != null && t.note!.isNotEmpty)
+              t.note!,
           ].join(' · '),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

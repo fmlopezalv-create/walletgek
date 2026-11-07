@@ -28,6 +28,13 @@ class Transaction {
             : null,
       );
 
+  /// Título descriptivo: si no hay categoría, usa la nota (p. ej. "Pago de X").
+  String get displayTitle {
+    if (category != null) return category!.name;
+    if (note != null && note!.isNotEmpty) return note!;
+    return type == 'income' ? 'Ingreso' : 'Gasto';
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'amount': amount,
