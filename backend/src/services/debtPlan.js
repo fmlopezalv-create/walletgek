@@ -18,9 +18,17 @@ function computeDebtPlan(debts, strategy, monthlyBudget) {
   let totalInterest = 0;
   const maxMonths = 600;
 
+  // Si el presupuesto es menor que la suma de mínimos, al menos se pagan los
+  // mínimos (no se deja disponible negativo, que corrompería el cálculo).
+  const totalMinimums = state.reduce(
+    (sum, d) => sum + Math.min(d.minimumPayment, d.balance),
+    0,
+  );
+  const effectiveBudget = Math.max(monthlyBudget, totalMinimums);
+
   while (state.some((d) => d.balance > 0.01) && month < maxMonths) {
     month++;
-    let available = monthlyBudget;
+    let available = effectiveBudget;
 
     // 1. Aplicar interés mensual (tasa anual / 12)
     for (const d of state) {
@@ -60,7 +68,7 @@ function computeDebtPlan(debts, strategy, monthlyBudget) {
 
   return {
     strategy,
-    monthlyBudget,
+    monthlyBudget: effectiveBudget,
     monthsToPayoff: month,
     totalInterest: Math.round(totalInterest * 100) / 100,
     schedule: state.map((d) => ({

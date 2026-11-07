@@ -1,6 +1,19 @@
 const prisma = require('../lib/prisma');
 const { computeDebtPlan } = require('../services/debtPlan');
 
+// Convierte un valor de fecha a Date; devuelve null si es inválido.
+function parseDate(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function parseNonNegative(value, fallback = 0) {
+  const n = parseFloat(value);
+  if (Number.isNaN(n) || n < 0) return fallback;
+  return n;
+}
+
 async function listDebts(req, res) {
   const debts = await prisma.debt.findMany({
     where: { userId: req.userId },
@@ -27,25 +40,29 @@ async function createDebt(req, res) {
     paidInstallments,
     details,
   } = req.body;
+  const trimmedName = name != null ? String(name).trim() : '';
   const parsedBalance = parseFloat(balance);
-  if (!name || !parsedBalance || parsedBalance <= 0) {
+  if (!trimmedName || !parsedBalance || parsedBalance <= 0) {
     return res.status(400).json({ error: 'Nombre y saldo válido son obligatorios' });
+  }
+  if (dueDate !== undefined && dueDate !== null && dueDate !== '' && parseDate(dueDate) === null) {
+    return res.status(400).json({ error: 'Fecha de vencimiento inválida' });
   }
   const debt = await prisma.debt.create({
     data: {
-      name,
+      name: trimmedName,
       type: type || 'other',
       color: color || null,
       balance: parsedBalance,
-      interestRate: parseFloat(interestRate) || 0,
-      minimumPayment: parseFloat(minimumPayment) || 0,
-      dueDate: dueDate ? new Date(dueDate) : null,
+      interestRate: parseNonNegative(interestRate),
+      minimumPayment: parseNonNegative(minimumPayment),
+      dueDate: parseDate(dueDate),
       institution: institution || null,
       status: status || 'up_to_date',
-      monthsLate: parseInt(monthsLate) || 0,
+      monthsLate: Math.max(0, parseInt(monthsLate) || 0),
       paymentType: paymentType || null,
       totalInstallments: parseInt(totalInstallments) || null,
-      paidInstallments: parseInt(paidInstallments) || 0,
+      paidInstallments: Math.max(0, parseInt(paidInstallments) || 0),
       details: details || undefined,
       userId: req.userId,
     },
@@ -56,7 +73,7 @@ async function createDebt(req, res) {
 
 async function payDebt(req, res) {
   const { id } = req.params;
-  const { amount, cuotas } = req.body;
+  const { amount, cuotas, date } = req.body;
   const parsedAmount = parseFloat(amount);
   if (!parsedAmount || parsedAmount <= 0) {
     return res.status(400).json({ error: 'Monto válido es obligatorio' });
@@ -64,9 +81,13 @@ async function payDebt(req, res) {
   const debt = await prisma.debt.findFirst({ where: { id, userId: req.userId } });
   if (!debt) return res.status(404).json({ error: 'Deuda no encontrada' });
 
+  const cuotasCount = Math.max(1, parseInt(cuotas) || 1);
+  const paymentDate = parseDate(date) || new Date();
+
   const newBalance = Math.max(0, Number(debt.balance) - parsedAmount);
-  const cuotasCount = parseInt(cuotas) || 1;
-  await prisma.debtPayment.create({ data: { amount: parsedAmount, debtId: id } });
+  await prisma.debtPayment.create({
+    data: { amount: parsedAmount, debtId: id, date: paymentDate },
+  });
   const updated = await prisma.debt.update({
     where: { id },
     data: {
@@ -122,23 +143,33 @@ async function updateDebt(req, res) {
   const debt = await prisma.debt.findFirst({ where: { id, userId: req.userId } });
   if (!debt) return res.status(404).json({ error: 'Deuda no encontrada' });
 
+  if (dueDate !== undefined && dueDate !== null && dueDate !== '' && parseDate(dueDate) === null) {
+    return res.status(400).json({ error: 'Fecha de vencimiento inválida' });
+  }
+
   const data = {};
-  if (name !== undefined) data.name = name;
+  if (name !== undefined) data.name = String(name).trim();
   if (color !== undefined) data.color = color || null;
-  if (balance !== undefined) data.balance = parseFloat(balance);
-  if (interestRate !== undefined) data.interestRate = parseFloat(interestRate) || 0;
-  if (minimumPayment !== undefined) data.minimumPayment = parseFloat(minimumPayment) || 0;
-  if (dueDate !== undefined) data.dueDate = dueDate ? new Date(dueDate) : null;
+  if (balance !== undefined) {
+    const parsed = parseFloat(balance);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return res.status(400).json({ error: 'Saldo válido obligatorio' });
+    }
+    data.balance = parsed;
+  }
+  if (interestRate !== undefined) data.interestRate = parseNonNegative(interestRate);
+  if (minimumPayment !== undefined) data.minimumPayment = parseNonNegative(minimumPayment);
+  if (dueDate !== undefined) data.dueDate = parseDate(dueDate);
   if (institution !== undefined) data.institution = institution || null;
   if (status !== undefined) data.status = status;
-  if (monthsLate !== undefined) data.monthsLate = parseInt(monthsLate) || 0;
+  if (monthsLate !== undefined) data.monthsLate = Math.max(0, parseInt(monthsLate) || 0);
   if (paymentType !== undefined) data.paymentType = paymentType || null;
   if (totalInstallments !== undefined) {
     data.totalInstallments =
       totalInstallments != null ? parseInt(totalInstallments) : null;
   }
   if (paidInstallments !== undefined) {
-    data.paidInstallments = parseInt(paidInstallments) || 0;
+    data.paidInstallments = Math.max(0, parseInt(paidInstallments) || 0);
   }
   if (details !== undefined) data.details = details;
 

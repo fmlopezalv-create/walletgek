@@ -68,9 +68,20 @@ class DebtService {
     return Debt.fromJson(data as Map<String, dynamic>);
   }
 
-  Future<Debt> payDebt(String id, double amount, {int cuotas = 1}) async {
-    final data = await ApiClient.instance
-        .post('/debts/$id/payments', {'amount': amount, 'cuotas': cuotas});
+  Future<Debt> payDebt(
+    String id,
+    double amount, {
+    int cuotas = 1,
+    DateTime? date,
+  }) async {
+    final body = <String, dynamic>{
+      'amount': amount,
+      'cuotas': cuotas,
+    };
+    if (date != null) {
+      body['date'] = date.toIso8601String();
+    }
+    final data = await ApiClient.instance.post('/debts/$id/payments', body);
     return Debt.fromJson(data as Map<String, dynamic>);
   }
 
