@@ -14,6 +14,7 @@ class Debt {
   final int? totalInstallments;
   final int paidInstallments;
   final Map<String, dynamic>? details;
+  final bool notifyEnabled;
 
   Debt({
     required this.id,
@@ -31,6 +32,7 @@ class Debt {
     this.totalInstallments,
     this.paidInstallments = 0,
     this.details,
+    this.notifyEnabled = true,
   });
 
   factory Debt.fromJson(Map<String, dynamic> json) => Debt(
@@ -51,6 +53,7 @@ class Debt {
         totalInstallments: (json['totalInstallments'] as num?)?.toInt(),
         paidInstallments: (json['paidInstallments'] as num?)?.toInt() ?? 0,
         details: json['details'] as Map<String, dynamic>?,
+        notifyEnabled: json['notifyEnabled'] != false,
       );
 
   Map<String, dynamic> toJson() => {
@@ -69,5 +72,6 @@ class Debt {
         'totalInstallments': totalInstallments,
         'paidInstallments': paidInstallments,
         'details': details,
+        'notifyEnabled': notifyEnabled,
       };
 }

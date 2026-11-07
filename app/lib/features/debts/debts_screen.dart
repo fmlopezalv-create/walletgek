@@ -400,6 +400,18 @@ class _DebtsScreenState extends State<DebtsScreen> {
     );
   }
 
+  Future<void> _toggleNotify(Debt debt) async {
+    try {
+      await _service.updateDebt(debt.id, notifyEnabled: !debt.notifyEnabled);
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
   Future<void> _deleteDebt(Debt debt) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -547,17 +559,25 @@ class _DebtsScreenState extends State<DebtsScreen> {
                   _payDebt(d);
                 } else if (v == 'status') {
                   _changeStatus(d);
+                } else if (v == 'toggleNotify') {
+                  _toggleNotify(d);
                 } else if (v == 'edit') {
                   _editDebt(d);
                 } else if (v == 'delete') {
                   _deleteDebt(d);
                 }
               },
-              itemBuilder: (ctx) => const [
-                PopupMenuItem(value: 'pay', child: Text('Registrar pago')),
-                PopupMenuItem(value: 'status', child: Text('Cambiar estado')),
-                PopupMenuItem(value: 'edit', child: Text('Editar')),
-                PopupMenuItem(value: 'delete', child: Text('Eliminar')),
+              itemBuilder: (ctx) => [
+                const PopupMenuItem(value: 'pay', child: Text('Registrar pago')),
+                const PopupMenuItem(value: 'status', child: Text('Cambiar estado')),
+                PopupMenuItem(
+                  value: 'toggleNotify',
+                  child: Text(d.notifyEnabled
+                      ? 'Silenciar notificaciones'
+                      : 'Activar notificaciones'),
+                ),
+                const PopupMenuItem(value: 'edit', child: Text('Editar')),
+                const PopupMenuItem(value: 'delete', child: Text('Eliminar')),
               ],
             ),
           ),

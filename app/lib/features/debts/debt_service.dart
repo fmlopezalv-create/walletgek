@@ -101,6 +101,7 @@ class DebtService {
     String? paymentType,
     int? totalInstallments,
     int? paidInstallments,
+    bool? notifyEnabled,
     Map<String, dynamic>? details,
   }) async {
     final body = <String, dynamic>{};
@@ -116,6 +117,7 @@ class DebtService {
     if (paymentType != null) body['paymentType'] = paymentType;
     if (totalInstallments != null) body['totalInstallments'] = totalInstallments;
     if (paidInstallments != null) body['paidInstallments'] = paidInstallments;
+    if (notifyEnabled != null) body['notifyEnabled'] = notifyEnabled;
     if (details != null) body['details'] = details;
     final data = await ApiClient.instance.patch('/debts/$id', body);
     return Debt.fromJson(data as Map<String, dynamic>);

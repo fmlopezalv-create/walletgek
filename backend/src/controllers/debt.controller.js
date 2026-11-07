@@ -38,6 +38,7 @@ async function createDebt(req, res) {
     paymentType,
     totalInstallments,
     paidInstallments,
+    notifyEnabled,
     details,
   } = req.body;
   const trimmedName = name != null ? String(name).trim() : '';
@@ -63,6 +64,7 @@ async function createDebt(req, res) {
       paymentType: paymentType || null,
       totalInstallments: parseInt(totalInstallments) || null,
       paidInstallments: Math.max(0, parseInt(paidInstallments) || 0),
+      notifyEnabled: notifyEnabled !== false,
       details: details || undefined,
       userId: req.userId,
     },
@@ -137,6 +139,7 @@ async function updateDebt(req, res) {
     paymentType,
     totalInstallments,
     paidInstallments,
+    notifyEnabled,
     details,
   } = req.body;
 
@@ -171,6 +174,7 @@ async function updateDebt(req, res) {
   if (paidInstallments !== undefined) {
     data.paidInstallments = Math.max(0, parseInt(paidInstallments) || 0);
   }
+  if (notifyEnabled !== undefined) data.notifyEnabled = notifyEnabled === true;
   if (details !== undefined) data.details = details;
 
   const updated = await prisma.debt.update({

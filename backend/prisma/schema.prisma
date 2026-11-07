@@ -66,6 +66,7 @@ model Debt {
   totalInstallments Int?
   paidInstallments  Int        @default(0)
   details        Json?
+  notifyEnabled  Boolean       @default(true)
   userId         String
   user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   payments       DebtPayment[]

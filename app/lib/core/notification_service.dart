@@ -33,6 +33,7 @@ class NotificationService {
 
     final now = tz.TZDateTime.now(tz.local);
     for (final d in debts) {
+      if (!d.notifyEnabled) continue;
       if (d.balance <= 0 || d.minimumPayment <= 0) continue;
       final dueDay = _dueDay(d);
       if (dueDay == null) continue;
