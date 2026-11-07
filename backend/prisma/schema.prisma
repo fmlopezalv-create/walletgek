@@ -20,6 +20,7 @@ model User {
   categories   Category[]
   transactions Transaction[]
   debts        Debt[]
+  receivables  Receivable[]
 }
 
 model Category {
@@ -79,4 +80,18 @@ model DebtPayment {
   date   DateTime @default(now())
   debtId String
   debt   Debt     @relation(fields: [debtId], references: [id], onDelete: Cascade)
+}
+
+model Receivable {
+  id        String    @id @default(uuid())
+  person    String
+  amount    Decimal   @db.Decimal(12, 2)
+  note      String?
+  dueDate   DateTime?
+  status    String    @default("pending") // pending | collected
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }

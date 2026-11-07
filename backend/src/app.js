@@ -9,6 +9,7 @@ const budgetRoutes = require('./routes/budget.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const advisorRoutes = require('./routes/advisor.routes');
 const backupRoutes = require('./routes/backup.routes');
+const receivableRoutes = require('./routes/receivable.routes');
 
 const app = express();
 app.use(cors());
@@ -24,6 +25,7 @@ app.use('/budget', budgetRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/advisor', advisorRoutes);
 app.use('/backup', backupRoutes);
+app.use('/receivables', receivableRoutes);
 
 // Manejo de errores global (F6)
 app.use((err, req, res, next) => {

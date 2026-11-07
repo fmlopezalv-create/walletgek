@@ -316,6 +316,7 @@ Una historia de usuario está **Done** sólo si se cumplen **todas** estas condi
 - Pago real de suscripción (Stripe).
 - **Autenticación por código al correo (magic link) + "Continuar con Google/Outlook"** *(ver §13.1)*.
 - **Modo offline** *(ver §13.2)*: cache local de datos + registro de transacciones sin conexión con sincronización al reconectar.
+- **Módulo "Cobros"** (cuentas por cobrar / préstamos que hice) *(ver §13.3, en implementación)*.
 
 ---
 
@@ -386,3 +387,21 @@ Una historia de usuario está **Done** sólo si se cumplen **todas** estas condi
 - Sincronización bidireccional con resolución de conflictos.
 
 **Enfoque técnico:** almacenamiento local en el dispositivo (shared_preferences con JSON) + cola de sincronización simple, manteniendo la nube (Neon) como fuente de verdad.
+
+---
+
+## 13.3 Módulo "Cobros" (cuentas por cobrar / préstamos que hice)
+
+**Objetivo:** gestionar el dinero que el usuario **presta o tiene que cobrar** (lo opuesto a las deudas).
+
+**Nombre elegido:** **"Cobros"** (corto y claro).
+
+**Alcance:**
+1. Registrar un préstamo hecho: persona, monto, nota, fecha de vencimiento (opcional).
+2. Registrar **cobros parciales** que reducen el saldo pendiente.
+3. Ver total pendiente de cobrar y estado (pendiente/cobrado).
+4. Editar y eliminar un cobro.
+
+**Modelo de datos:** tabla `Receivable` (persona, monto, nota, vencimiento, estado, usuario).
+
+**Ubicación en la UI:** pantalla propia "Cobros" accesible desde Deudas y desde el dashboard.

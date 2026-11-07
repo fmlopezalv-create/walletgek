@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_state.dart';
 import '../../core/storage.dart';
+import '../receivables/receivables_screen.dart';
 import 'add_debt_screen.dart';
 import 'debt_colors.dart';
 import 'debt_model.dart';
@@ -433,6 +434,13 @@ class _DebtsScreenState extends State<DebtsScreen> {
       appBar: AppBar(
         title: const Text('Deudas'),
         actions: [
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ReceivablesScreen()),
+            ),
+            icon: const Icon(Icons.arrow_circle_up_outlined),
+            tooltip: 'Cobros (lo que te deben)',
+          ),
           IconButton(
             onPressed: _openSettings,
             icon: const Icon(Icons.settings_outlined),
