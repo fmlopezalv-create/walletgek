@@ -1,13 +1,52 @@
 const prisma = require('../lib/prisma');
 
+// Convierte un valor de fecha a Date; devuelve null si es inválido.
+function parseDate(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function monthRange(month) {
+  // month: 'YYYY-MM'
+  if (month && /^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+    const [y, m] = month.split('-').map(Number);
+    return {
+      gte: new Date(y, m - 1, 1),
+      lt: new Date(y, m, 1),
+    };
+  }
+  return null;
+}
+
 async function listTransactions(req, res) {
-  const transactions = await prisma.transaction.findMany({
-    where: { userId: req.userId },
-    include: { category: true },
-    orderBy: { date: 'desc' },
-    take: 200,
+  const { month, page, limit } = req.query;
+  const where = { userId: req.userId };
+
+  const range = monthRange(month);
+  if (range) where.date = range;
+
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+  const skip = (pageNum - 1) * limitNum;
+
+  const [transactions, total] = await Promise.all([
+    prisma.transaction.findMany({
+      where,
+      include: { category: true },
+      orderBy: { date: 'desc' },
+      skip,
+      take: limitNum,
+    }),
+    prisma.transaction.count({ where }),
+  ]);
+
+  return res.json({
+    transactions,
+    total,
+    page: pageNum,
+    limit: limitNum,
   });
-  return res.json(transactions);
 }
 
 async function createTransaction(req, res) {
@@ -17,12 +56,17 @@ async function createTransaction(req, res) {
     return res.status(400).json({ error: 'Monto válido y tipo (income|expense) son obligatorios' });
   }
 
+  const parsedDate = parseDate(date);
+  if (date !== undefined && date !== null && date !== '' && parsedDate === null) {
+    return res.status(400).json({ error: 'Fecha inválida' });
+  }
+
   const data = {
     amount: parsedAmount,
     type,
     note,
     userId: req.userId,
-    date: date ? new Date(date) : new Date(),
+    date: parsedDate || new Date(),
   };
 
   if (categoryId) {
@@ -68,7 +112,13 @@ async function updateTransaction(req, res) {
     data.type = type;
   }
   if (note !== undefined) data.note = note;
-  if (date !== undefined) data.date = new Date(date);
+  if (date !== undefined) {
+    const parsedDate = parseDate(date);
+    if (parsedDate === null) {
+      return res.status(400).json({ error: 'Fecha inválida' });
+    }
+    data.date = parsedDate;
+  }
 
   if (categoryId !== undefined) {
     if (categoryId === null) {

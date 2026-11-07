@@ -15,12 +15,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _confirm = TextEditingController();
   final _service = AuthService();
   String _country = 'ES';
   bool _loading = false;
   String? _error;
 
+  static final _emailRe = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+
+  String? _validate() {
+    if (_name.text.trim().isEmpty) return 'Introduce tu nombre';
+    final email = _email.text.trim();
+    if (email.isEmpty) return 'Introduce tu email';
+    if (!_emailRe.hasMatch(email)) return 'Introduce un email válido';
+    if (_password.text.length < 6) {
+      return 'La contraseña debe tener al menos 6 caracteres';
+    }
+    if (_password.text != _confirm.text) {
+      return 'Las contraseñas no coinciden';
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
+    final error = _validate();
+    if (error != null) {
+      setState(() => _error = error);
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
@@ -59,19 +81,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 TextField(
                   controller: _name,
+                  textCapitalization: TextCapitalization.words,
                   decoration: const InputDecoration(labelText: 'Nombre'),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
+                  autocorrect: false,
                   decoration: const InputDecoration(labelText: 'Email'),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _password,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Contraseña'),
+                  decoration: const InputDecoration(
+                    labelText: 'Contraseña',
+                    helperText: 'Mínimo 6 caracteres',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _confirm,
+                  obscureText: true,
+                  decoration:
+                      const InputDecoration(labelText: 'Confirmar contraseña'),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(

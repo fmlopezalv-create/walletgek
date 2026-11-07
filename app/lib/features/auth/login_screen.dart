@@ -19,6 +19,10 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
 
   Future<void> _submit() async {
+    if (_email.text.trim().isEmpty || _password.text.isEmpty) {
+      setState(() => _error = 'Introduce tu email y contraseña');
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;

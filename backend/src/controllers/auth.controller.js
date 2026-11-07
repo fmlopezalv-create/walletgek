@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
 const { DEFAULT_CATEGORIES } = require('../lib/defaultCategories');
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const publicUser = (user) => ({
   id: user.id,
   email: user.email,
@@ -10,12 +12,25 @@ const publicUser = (user) => ({
   currency: user.currency,
   country: user.country,
   isPremium: user.isPremium ?? false,
+  monthlyBudget:
+    user.monthlyBudget != null ? Number(user.monthlyBudget) : null,
 });
 
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
 async function register(req, res) {
-  const { email, password, name, currency, country } = req.body;
+  const email = normalizeEmail(req.body.email);
+  const { password, name, currency, country } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email y contraseña son obligatorios' });
+  }
+  if (!EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: 'Introduce un email válido' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
   }
   const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) {
@@ -26,7 +41,7 @@ async function register(req, res) {
     data: {
       email,
       passwordHash,
-      name,
+      name: name != null ? String(name).trim() : null,
       currency: currency || 'EUR',
       country: country || 'ES',
     },
@@ -39,7 +54,8 @@ async function register(req, res) {
 }
 
 async function login(req, res) {
-  const { email, password } = req.body;
+  const email = normalizeEmail(req.body.email);
+  const { password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email y contraseña son obligatorios' });
   }

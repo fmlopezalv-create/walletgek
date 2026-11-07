@@ -3,9 +3,12 @@ import '../categories/category_model.dart';
 import 'transaction_model.dart';
 
 class TransactionService {
-  Future<List<Transaction>> listTransactions() async {
-    final data = await ApiClient.instance.get('/transactions') as List;
-    return data
+  Future<List<Transaction>> listTransactions({String? month}) async {
+    final path = month != null ? '/transactions?month=$month' : '/transactions';
+    final data = await ApiClient.instance.get(path);
+    // El backend devuelve { transactions, total, page, limit }
+    final list = (data as Map<String, dynamic>)['transactions'] as List;
+    return list
         .map((e) => Transaction.fromJson(e as Map<String, dynamic>))
         .toList();
   }
@@ -77,5 +80,9 @@ class TransactionService {
       'monthlyBudget': monthlyBudget,
     });
     return Category.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteCategory(String id) async {
+    await ApiClient.instance.delete('/categories/$id');
   }
 }
