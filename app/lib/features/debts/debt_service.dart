@@ -47,6 +47,7 @@ class DebtService {
     String? paymentType,
     int? totalInstallments,
     int? paidInstallments,
+    DateTime? dueDate,
     Map<String, dynamic>? details,
   }) async {
     final body = <String, dynamic>{
@@ -62,6 +63,7 @@ class DebtService {
       'paymentType': paymentType,
       'totalInstallments': totalInstallments,
       'paidInstallments': paidInstallments,
+      'dueDate': dueDate?.toIso8601String(),
       'details': (details != null && details.isNotEmpty) ? details : null,
     };
     final data = await ApiClient.instance.post('/debts', body);

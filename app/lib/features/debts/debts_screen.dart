@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/app_state.dart';
+import '../../core/notification_service.dart';
 import '../../core/storage.dart';
 import '../receivables/receivables_screen.dart';
 import 'add_debt_screen.dart';
@@ -72,6 +73,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
     try {
       final list = await _service.listDebts();
       setState(() => _debts = list);
+      NotificationService.instance.scheduleForDebts(list);
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {

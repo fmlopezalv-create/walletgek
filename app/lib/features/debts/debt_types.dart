@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum DebtFieldType { text, money, percent, number, choice, months }
+enum DebtFieldType { text, money, percent, number, choice, months, day }
 
 class DebtFieldDef {
   final String key;
@@ -39,6 +39,7 @@ const List<DebtTypeSchema> debtTypes = [
     DebtFieldDef('balance', 'Valor pendiente', DebtFieldType.money, required: true),
     DebtFieldDef('interest', 'Tasa de interés anual (%)', DebtFieldType.percent),
     DebtFieldDef('monthly_payment', 'Cuota mensual', DebtFieldType.money),
+    DebtFieldDef('due_date', 'Día de pago mensual', DebtFieldType.day),
     DebtFieldDef('total_installments', 'Cuotas totales', DebtFieldType.number),
     DebtFieldDef('paid_installments', 'Cuotas pagadas', DebtFieldType.number),
   ]),
@@ -50,12 +51,14 @@ const List<DebtTypeSchema> debtTypes = [
     DebtFieldDef('payment_type', 'Tipo de pago', DebtFieldType.choice,
         required: true, choices: ['Pago mínimo', 'Pago de contado', 'Pago a la fecha']),
     DebtFieldDef('monthly_payment', 'Cuota mensual', DebtFieldType.money),
+    DebtFieldDef('due_date', 'Día de pago mensual', DebtFieldType.day),
   ]),
   DebtTypeSchema('personal_loan', 'Préstamo personal', Icons.person, [], [
     DebtFieldDef('institution', 'Entidad', DebtFieldType.text),
     DebtFieldDef('balance', 'Valor pendiente', DebtFieldType.money, required: true),
     DebtFieldDef('interest', 'Tasa de interés anual (%)', DebtFieldType.percent),
     DebtFieldDef('monthly_payment', 'Cuota mensual', DebtFieldType.money),
+    DebtFieldDef('due_date', 'Día de pago mensual', DebtFieldType.day),
     DebtFieldDef('total_installments', 'Cuotas totales', DebtFieldType.number),
     DebtFieldDef('paid_installments', 'Cuotas pagadas', DebtFieldType.number),
   ]),
@@ -66,6 +69,7 @@ const List<DebtTypeSchema> debtTypes = [
     DebtFieldDef('interest', 'Tasa de interés anual (%)', DebtFieldType.percent),
     DebtFieldDef('rate_type', 'Tipo de interés', DebtFieldType.choice, choices: ['Fijo', 'Variable']),
     DebtFieldDef('monthly_payment', 'Cuota mensual', DebtFieldType.money),
+    DebtFieldDef('due_date', 'Día de pago mensual', DebtFieldType.day),
     DebtFieldDef('total_installments', 'Cuotas totales', DebtFieldType.number),
     DebtFieldDef('paid_installments', 'Cuotas pagadas', DebtFieldType.number),
   ]),
@@ -75,6 +79,7 @@ const List<DebtTypeSchema> debtTypes = [
     DebtFieldDef('balance', 'Valor pendiente', DebtFieldType.money, required: true),
     DebtFieldDef('interest', 'Tasa de interés anual (%)', DebtFieldType.percent),
     DebtFieldDef('monthly_payment', 'Cuota mensual', DebtFieldType.money),
+    DebtFieldDef('due_date', 'Día de pago mensual', DebtFieldType.day),
     DebtFieldDef('total_installments', 'Cuotas totales', DebtFieldType.number),
     DebtFieldDef('paid_installments', 'Cuotas pagadas', DebtFieldType.number),
   ]),
@@ -83,6 +88,7 @@ const List<DebtTypeSchema> debtTypes = [
     DebtFieldDef('balance', 'Valor pendiente', DebtFieldType.money, required: true),
     DebtFieldDef('interest', 'Tasa de interés anual (%)', DebtFieldType.percent),
     DebtFieldDef('monthly_payment', 'Cuota mensual', DebtFieldType.money),
+    DebtFieldDef('due_date', 'Día de pago mensual', DebtFieldType.day),
     DebtFieldDef('total_installments', 'Cuotas totales', DebtFieldType.number),
     DebtFieldDef('paid_installments', 'Cuotas pagadas', DebtFieldType.number),
     DebtFieldDef('grace_period', '¿En periodo de gracia?', DebtFieldType.choice, choices: ['Sí', 'No']),
@@ -92,6 +98,7 @@ const List<DebtTypeSchema> debtTypes = [
     DebtFieldDef('balance', 'Valor pendiente', DebtFieldType.money, required: true),
     DebtFieldDef('interest', 'Tasa de interés anual (%)', DebtFieldType.percent),
     DebtFieldDef('monthly_payment', 'Descuento mensual por nómina', DebtFieldType.money),
+    DebtFieldDef('due_date', 'Día de pago mensual', DebtFieldType.day),
     DebtFieldDef('total_installments', 'Cuotas totales', DebtFieldType.number),
     DebtFieldDef('paid_installments', 'Cuotas pagadas', DebtFieldType.number),
   ]),
@@ -99,6 +106,7 @@ const List<DebtTypeSchema> debtTypes = [
     DebtFieldDef('institution', 'Acreedor (persona)', DebtFieldType.text, required: true),
     DebtFieldDef('balance', 'Valor pendiente', DebtFieldType.money, required: true),
     DebtFieldDef('monthly_payment', 'Pago acordado', DebtFieldType.money),
+    DebtFieldDef('due_date', 'Día de pago mensual', DebtFieldType.day),
     DebtFieldDef('total_installments', 'Cuotas totales', DebtFieldType.number),
     DebtFieldDef('paid_installments', 'Cuotas pagadas', DebtFieldType.number),
   ]),

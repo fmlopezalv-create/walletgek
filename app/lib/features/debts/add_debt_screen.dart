@@ -23,6 +23,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
     'institution',
     'interest',
     'monthly_payment',
+    'due_date',
   };
   bool _saving = false;
   String? _error;
@@ -146,6 +147,20 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
   double? _num(String key) =>
       double.tryParse(_ctrl(key).text.replaceAll(',', '.'));
 
+  /// Convierte el día del mes seleccionado (1-31) en la próxima fecha de
+  /// vencimiento. Si el día ya pasó este mes, usa el mes siguiente.
+  DateTime? _dayToDate(String? dayStr) {
+    if (dayStr == null) return null;
+    final day = int.tryParse(dayStr);
+    if (day == null || day < 1 || day > 31) return null;
+    final now = DateTime.now();
+    var date = DateTime(now.year, now.month, day.clamp(1, 28));
+    if (date.isBefore(DateTime(now.year, now.month, now.day))) {
+      date = DateTime(now.year, now.month + 1, day.clamp(1, 28));
+    }
+    return date;
+  }
+
   bool _visible(DebtFieldDef f) {
     if (f.showIfKey == null) return true;
     return _choices[f.showIfKey] == f.showIfValue;
@@ -187,6 +202,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
     double minimumPayment = 0;
     int? totalInstallments;
     int paidInstallments = 0;
+    DateTime? dueDate;
     final details = <String, dynamic>{};
 
     if (_isCustom) {
@@ -209,6 +225,9 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
       }
       if (_customFields.contains('monthly_payment')) {
         minimumPayment = _num('monthly_payment') ?? 0;
+      }
+      if (_customFields.contains('due_date')) {
+        dueDate = _dayToDate(_choices['due_date']);
       }
       if (_customFields.contains('total_installments')) {
         totalInstallments = int.tryParse(_ctrl('total_installments').text);
@@ -253,6 +272,9 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
           case 'paid_installments':
             paidInstallments = int.tryParse(text) ?? 0;
             break;
+          case 'due_date':
+            dueDate = _dayToDate(_choices[f.key]);
+            break;
           default:
             if (text.isNotEmpty) {
               final n = _num(f.key);
@@ -278,6 +300,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
         balance: balance,
         interestRate: interest,
         minimumPayment: minimumPayment,
+        dueDate: dueDate,
         institution: institution,
         status: status,
         monthsLate: monthsLate,
@@ -547,6 +570,8 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
         return _number(f.key, f.label);
       case DebtFieldType.choice:
         return _choice(f.key, f.label, f.choices ?? []);
+      case DebtFieldType.day:
+        return _day(f.key, f.label);
     }
   }
 
@@ -578,6 +603,27 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
         keyboardType: TextInputType.number,
         decoration: InputDecoration(labelText: label),
       );
+
+  Widget _day(String key, String label) {
+    final days = List.generate(31, (i) => '${i + 1}');
+    return DropdownButtonFormField<String>(
+      initialValue: _choices[key],
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+      ),
+      items: days
+          .map((d) => DropdownMenuItem(value: d, child: Text('Día $d')))
+          .toList(),
+      onChanged: (v) => setState(() {
+        if (v != null) {
+          _choices[key] = v;
+        } else {
+          _choices.remove(key);
+        }
+      }),
+    );
+  }
 
   Widget _choice(String key, String label, List<String> options) {
     return DropdownButtonFormField<String>(

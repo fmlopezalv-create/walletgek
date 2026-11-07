@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'core/api_client.dart';
 import 'core/app_state.dart';
 import 'core/connectivity.dart';
+import 'core/notification_service.dart';
 import 'core/offline_sync.dart';
 import 'core/storage.dart';
 import 'core/theme.dart';
@@ -15,6 +16,7 @@ Future<void> main() async {
   ApiClient.instance.token = token;
   await AppState.instance.load();
   await ConnectivityService.instance.init();
+  await NotificationService.instance.init();
   if (token != null) {
     await OfflineSync.instance.init();
   }

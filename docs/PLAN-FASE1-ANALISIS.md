@@ -405,3 +405,16 @@ Una historia de usuario está **Done** sólo si se cumplen **todas** estas condi
 **Modelo de datos:** tabla `Receivable` (persona, monto, nota, vencimiento, estado, usuario).
 
 **Ubicación en la UI:** pantalla propia "Cobros" accesible desde Deudas y desde el dashboard.
+
+---
+
+## 13.4 Día de pago por deuda y notificaciones (en implementación)
+
+**Problema detectado:** los tipos de deuda (préstamo bancario, tarjeta, hipoteca, etc.) no exponían un campo de **fecha/día de pago**, así que no era posible distinguir "el banco A cobra el 26 y el banco B el 28", ni avisar de pagos próximos/vencidos.
+
+**Solución implementada:**
+1. Campo **"Día de pago mensual"** (1–31) en todos los tipos de deuda con cuota mensual.
+2. Cálculo del **próximo vencimiento** a partir de ese día.
+3. **Notificación local** cuando el pago está próximo (días antes) o vencido.
+
+**Enfoque:** notificaciones locales con `flutter_local_notifications` (sin backend de push). El día de pago se guarda como `dueDate` (primer vencimiento) y se repite mensualmente.
