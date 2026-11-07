@@ -31,3 +31,36 @@ class Category {
         'monthlyBudget': monthlyBudget,
       };
 }
+
+/// Devuelve un emoji representativo para una categoría según su nombre.
+/// El primer acierto gana; si no coincide ninguno, usa un emoji genérico.
+String categoryEmoji(String name) {
+  final n = name.toLowerCase();
+  const rules = <List<String>>[
+    ['comida', '🛒'],
+    ['supermercado', '🛒'],
+    ['restaurante', '🍽️'],
+    ['transporte', '🚗'],
+    ['vivienda', '🏠'],
+    ['servicio', '💡'],
+    ['salud', '💊'],
+    ['ocio', '🎬'],
+    ['entretenimiento', '🎬'],
+    ['compras', '👕'],
+    ['ropa', '👕'],
+    ['suscripcion', '📱'],
+    ['educacion', '🎓'],
+    ['deuda', '💳'],
+    ['prestamo', '💳'],
+    ['sueldo', '💰'],
+    ['nomina', '💰'],
+    ['freelance', '💼'],
+    ['independiente', '💼'],
+    ['venta', '💵'],
+    ['ingreso', '💵'],
+  ];
+  for (final r in rules) {
+    if (n.contains(r[0])) return r[1];
+  }
+  return '🏷️';
+}

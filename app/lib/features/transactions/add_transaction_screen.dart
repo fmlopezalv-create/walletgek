@@ -184,7 +184,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     items: _filteredCategories
                         .map((c) => DropdownMenuItem(
                               value: c.id,
-                              child: Text(c.name),
+                              child: Text('${categoryEmoji(c.name)} ${c.name}'),
                             ))
                         .toList(),
                     onChanged: (v) => setState(() => _categoryId = v),

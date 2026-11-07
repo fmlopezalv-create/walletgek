@@ -120,12 +120,88 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     }
   }
 
+  void _showCategories() {
+    final income = _categories
+        .where((c) => c.type == 'income')
+        .toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+    final expense = _categories
+        .where((c) => c.type == 'expense')
+        .toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          children: [
+            Text('Categorías disponibles',
+                style: Theme.of(ctx).textTheme.titleMedium),
+            _categorySection(ctx, 'Ingresos', Icons.arrow_downward,
+                AppColors.emerald, income),
+            _categorySection(
+                ctx, 'Gastos', Icons.arrow_upward, AppColors.coral, expense),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _categorySection(BuildContext ctx, String title, IconData icon,
+      Color color, List<Category> cats) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Text(title,
+                style: TextStyle(fontWeight: FontWeight.w700, color: color)),
+            const SizedBox(width: 8),
+            Text('${cats.length}', style: Theme.of(ctx).textTheme.bodySmall),
+          ],
+        ),
+        const SizedBox(height: 4),
+        if (cats.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text('Sin categorías',
+                style: Theme.of(ctx).textTheme.bodySmall),
+          )
+        else
+          for (final c in cats)
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Text(categoryEmoji(c.name),
+                  style: const TextStyle(fontSize: 18)),
+              title: Text(c.name),
+              trailing: c.monthlyBudget != null && c.monthlyBudget! > 0
+                  ? Text(
+                      '${AppState.instance.symbol}${c.monthlyBudget!.toStringAsFixed(0)}/mes',
+                      style: Theme.of(ctx).textTheme.bodySmall,
+                    )
+                  : null,
+            ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Movimientos'),
         actions: [
+          IconButton(
+            onPressed: _showCategories,
+            icon: const Icon(Icons.category_outlined),
+            tooltip: 'Ver categorías',
+          ),
           IconButton(
             onPressed: _load,
             icon: const Icon(Icons.refresh),
@@ -365,8 +441,9 @@ class _EditTransactionDialogState extends State<_EditTransactionDialog> {
               initialValue: _categoryId,
               decoration: const InputDecoration(labelText: 'Categoría'),
               items: _filteredCategories
-                  .map((c) =>
-                      DropdownMenuItem(value: c.id, child: Text(c.name)))
+                  .map((c) => DropdownMenuItem(
+                      value: c.id,
+                      child: Text('${categoryEmoji(c.name)} ${c.name}')))
                   .toList(),
               onChanged: (v) => setState(() => _categoryId = v),
             ),
