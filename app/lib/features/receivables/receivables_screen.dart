@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_state.dart';
 import '../../core/money_widgets.dart';
+import '../transactions/transaction_service.dart';
 import 'receivable_model.dart';
 import 'receivable_service.dart';
 
@@ -15,6 +16,7 @@ class ReceivablesScreen extends StatefulWidget {
 
 class _ReceivablesScreenState extends State<ReceivablesScreen> {
   final _service = ReceivableService();
+  final _txService = TransactionService();
   List<Receivable> _receivables = [];
   bool _loading = true;
   String? _error;
@@ -104,6 +106,64 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
     try {
       await _service.collectReceivable(r.id, amount);
       if (mounted) _load();
+      _askRegisterIncome(r.person, amount);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
+  /// Tras registrar un cobro, ofrece registrarlo como ingreso.
+  Future<void> _askRegisterIncome(String person, double amount) async {
+    final register = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.payments_outlined,
+                  color: AppColors.emerald),
+              title: Text('Cobro de $person registrado'),
+              subtitle: Text(
+                  '¿Registrar ${AppState.instance.formatAmount(amount)} como ingreso?'),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('Ahora no'),
+                  ),
+                ),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: const Text('Registrar ingreso'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (register != true || !mounted) return;
+    try {
+      await _txService.createTransaction(
+        amount: amount,
+        type: 'income',
+        note: 'Cobro de $person',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ingreso registrado')),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)

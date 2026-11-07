@@ -8,6 +8,7 @@ import '../../core/app_state.dart';
 import '../../core/notification_service.dart';
 import '../../core/storage.dart';
 import '../receivables/receivables_screen.dart';
+import '../transactions/transaction_service.dart';
 import 'add_debt_screen.dart';
 import 'debt_colors.dart';
 import 'debt_model.dart';
@@ -42,6 +43,7 @@ class DebtsScreen extends StatefulWidget {
 
 class _DebtsScreenState extends State<DebtsScreen> {
   final _service = DebtService();
+  final _txService = TransactionService();
   List<Debt> _debts = [];
   bool _loading = true;
   String? _error;
@@ -211,6 +213,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
                     cuotas: int.tryParse(cuotas.text) ?? 1);
                 if (ctx.mounted) Navigator.of(ctx).pop();
                 _load();
+                _askRegisterExpense(debt.name, v);
               } catch (e) {
                 if (ctx.mounted) {
                   ScaffoldMessenger.of(ctx)
@@ -225,9 +228,65 @@ class _DebtsScreenState extends State<DebtsScreen> {
     );
   }
 
+  /// Tras registrar un pago, ofrece registrar el gasto correspondiente.
+  Future<void> _askRegisterExpense(String debtName, double amount) async {
+    final register = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.receipt_long,
+                  color: AppColors.coral),
+              title: Text('Pago de $debtName registrado'),
+              subtitle: Text(
+                  '¿Registrar ${AppState.instance.formatAmount(amount)} como gasto?'),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('Ahora no'),
+                  ),
+                ),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: const Text('Registrar gasto'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (register != true || !mounted) return;
+    try {
+      await _txService.createTransaction(
+        amount: amount,
+        type: 'expense',
+        note: 'Pago de $debtName',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gasto registrado')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
   Future<void> _editDebt(Debt debt) async {
-    final name = TextEditingController(text: debt.name);
-    final balance =
+    final name = TextEditingController(text: debt.name);    final balance =
         TextEditingController(text: debt.balance.toStringAsFixed(2));
     final rate =
         TextEditingController(text: debt.interestRate.toStringAsFixed(1));
