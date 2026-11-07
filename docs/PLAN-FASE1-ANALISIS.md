@@ -366,18 +366,23 @@ Una historia de usuario está **Done** sólo si se cumplen **todas** estas condi
 
 ---
 
-## 13.2 Decisión de modo offline (en implementación)
+## 13.2 Decisión de modo offline (implementado)
 
 **Objetivo:** que el usuario pueda usar la app sin conexión a internet.
 
-**Alcance acordado:**
-1. **Cache local** de los datos del usuario (movimientos, deudas, categorías, presupuesto) en el dispositivo.
-2. **Registrar movimientos sin conexión**: se guardan localmente y se marcan como "pendientes de sincronizar".
+**Alcance implementado:**
+1. **Cache local** de los datos del usuario (movimientos, deudas, categorías, presupuesto/dashboard) en el dispositivo.
+2. **Registrar movimientos sin conexión**: se guardan en una cola de pendientes y aparecen en la lista.
 3. **Sincronización al recuperar internet**: se envían los pendientes al backend y se refresca la cache.
-4. **Indicador visual** de estado sin conexión.
+4. **Indicador visual** de estado sin conexión (banner ámbar).
 
 **Limitaciones conocidas:**
 - El asesor IA y el inicio de sesión por primera vez siempre requieren internet.
-- La sincronización es de movimientos (ingresos/gastos); deudas y ediciones offline se evalúan después.
+- La sincronización cubre **movimientos** (ingresos/gastos).
 
-**Enfoque técnico:** almacenamiento local en el dispositivo (sin base SQL compleja) + cola de sincronización simple, manteniendo la nube (Neon) como fuente de verdad.
+**Mejoras futuras anotadas (pendientes):**
+- **Creación y edición de deudas sin conexión** (mayor complejidad: campos dinámicos por tipo, cálculos de cuota/interés, pagos asociados y plan de pago, manejo de conflictos al sincronizar). Se implementará en una fase posterior.
+- Edición/eliminación de movimientos sin conexión.
+- Sincronización bidireccional con resolución de conflictos.
+
+**Enfoque técnico:** almacenamiento local en el dispositivo (shared_preferences con JSON) + cola de sincronización simple, manteniendo la nube (Neon) como fuente de verdad.
