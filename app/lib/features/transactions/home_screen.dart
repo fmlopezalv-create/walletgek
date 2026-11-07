@@ -22,6 +22,9 @@ import '../debts/debt_plan_screen.dart';
 import '../debts/debt_service.dart';
 import '../profile/profile_screen.dart';
 import '../profile/profile_service.dart';
+import '../receivables/receivable_model.dart';
+import '../receivables/receivable_service.dart';
+import '../receivables/receivables_screen.dart';
 import 'add_transaction_screen.dart';
 import 'transaction_model.dart';
 import 'transaction_service.dart';
@@ -45,18 +48,20 @@ class _HomeScreenState extends State<HomeScreen> {
   final _debtService = DebtService();
   final _profileService = ProfileService();
   final _budgetService = BudgetService();
+  final _receivableService = ReceivableService();
 
   HomeDashboard? _home;
   List<Transaction> _transactions = [];
   BudgetSummary? _budgetSummary;
+  List<Receivable> _receivables = [];
   bool _loading = true;
   bool _hideBalance = false;
   String? _error;
   String _month = _currentMonth();
   final PageController _pageController = PageController();
   List<String> _sectionOrder = const [
-    'premium', 'upcoming', 'debts', 'expenses', 'budget', 'strategy', 'babylon',
-    'recent',
+    'premium', 'upcoming', 'debts', 'receivables', 'expenses', 'budget',
+    'strategy', 'babylon', 'recent',
   ];
   Set<String> _hiddenSections = {};
 
@@ -144,6 +149,11 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final summary = await _budgetService.getSummary(month: _month);
       if (mounted) setState(() => _budgetSummary = summary);
+    } catch (_) {}
+    // Cobros (no bloquea si falla).
+    try {
+      final receivables = await _receivableService.listReceivables();
+      if (mounted) setState(() => _receivables = receivables);
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
@@ -322,6 +332,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return _home != null ? _upcomingCard(_home!) : const SizedBox.shrink();
       case 'debts':
         return _home != null ? _debtSummaryCard(_home!) : const SizedBox.shrink();
+      case 'receivables':
+        return _receivablesCard();
       case 'expenses':
         return _home != null ? _expensesCard(_home!) : const SizedBox.shrink();
       case 'budget':
@@ -473,6 +485,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return 'Próximos vencimientos';
       case 'debts':
         return 'Resumen de deudas';
+      case 'receivables':
+        return 'Cobros';
       case 'expenses':
         return 'Gastos del mes';
       case 'budget':
@@ -1164,6 +1178,79 @@ class _HomeScreenState extends State<HomeScreen> {
               label: const Text('Ver estrategia de pago'),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _receivablesCard() {
+    final pending = _receivables
+        .where((r) => r.status == 'pending')
+        .toList();
+    final totalPending =
+        pending.fold<double>(0, (s, r) => s + r.amount);
+    return _sectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.arrow_circle_up_outlined,
+                  color: AppColors.emerald),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Cobros',
+                    style: Theme.of(context).textTheme.titleMedium),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const ReceivablesScreen()),
+                ),
+                child: const Text('Ver cobros'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          if (_receivables.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('No tienes dinero por cobrar.'),
+            )
+          else ...[
+            Text(
+              'Te deben ${AppState.instance.formatAmount(totalPending)}',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppColors.emerald,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 10),
+            for (final r in pending.take(3))
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(r.person,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 13)),
+                    ),
+                    MoneyText(r.amount,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        )),
+                  ],
+                ),
+              ),
+            if (_receivables.any((r) => r.status == 'collected'))
+              Text(
+                '${_receivables.where((r) => r.status == 'collected').length} cobrado(s)',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+          ],
         ],
       ),
     );
