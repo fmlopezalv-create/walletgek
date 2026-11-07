@@ -15,6 +15,7 @@ class TokenStorage {
   static const _photoKey = 'profile_photo_path';
   static const _sectionOrderKey = 'home_section_order';
   static const _sectionHiddenKey = 'home_section_hidden';
+  static const _txStyleKey = 'tx_view_style';
 
   static Future<void> save(String token) =>
       _storage.write(key: _key, value: token);
@@ -86,6 +87,11 @@ class TokenStorage {
 
   static Future<String?> readSectionHidden() =>
       _storage.read(key: _sectionHiddenKey);
+
+  static Future<void> saveTxStyle(String style) =>
+      _storage.write(key: _txStyleKey, value: style);
+
+  static Future<String?> readTxStyle() => _storage.read(key: _txStyleKey);
 
   static Future<void> clear() => _storage.delete(key: _key);
 }

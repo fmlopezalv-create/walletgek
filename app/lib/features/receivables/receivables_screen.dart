@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/app_state.dart';
+import '../../core/micro_animations.dart';
 import '../../core/money_widgets.dart';
+import '../../core/skeleton.dart';
 import '../transactions/transaction_service.dart';
 import 'receivable_model.dart';
 import 'receivable_service.dart';
@@ -280,19 +282,19 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _create,
-        child: const Icon(Icons.add),
+        child: const PressableScale(child: Icon(Icons.add)),
       ),
     );
   }
 
   Widget _buildList() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const SkeletonList();
     }
     if (_error != null) {
       return Center(child: Text('Error: $_error'));
     }
-    return RefreshIndicator(
+    return RippleRefresh(
       onRefresh: _load,
       child: _receivables.isEmpty
           ? ListView(
@@ -315,9 +317,11 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
               itemBuilder: (context, index) {
         final r = _receivables[index];
         final collected = r.status == 'collected';
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-          child: ListTile(
+        return FadeIn(
+          delay: Duration(milliseconds: index * 30),
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            child: ListTile(
             onTap: () => _edit(r),
             leading: CircleAvatar(
               backgroundColor: (collected ? AppColors.emerald : AppColors.amber)
@@ -373,6 +377,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
                 ),
               ],
             ),
+          ),
           ),
         );
       },

@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/app_state.dart';
+import '../../core/micro_animations.dart';
 import '../../core/notification_service.dart';
+import '../../core/skeleton.dart';
 import '../../core/storage.dart';
 import '../receivables/receivables_screen.dart';
 import '../transactions/transaction_service.dart';
@@ -564,15 +566,15 @@ class _DebtsScreenState extends State<DebtsScreen> {
             MaterialPageRoute(builder: (_) => const AddDebtScreen()),
           );
         },
-        child: const Icon(Icons.add),
+        child: const PressableScale(child: Icon(Icons.add)),
       ),
     );
   }
 
   Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const SkeletonList();
     if (_error != null) {
-      return RefreshIndicator(
+      return RippleRefresh(
         onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -586,7 +588,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
       );
     }
     if (_debts.isEmpty) {
-      return RefreshIndicator(
+      return RippleRefresh(
         onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -614,7 +616,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
   }
 
   Widget _buildList(double total) {
-    return RefreshIndicator(
+    return RippleRefresh(
       onRefresh: _load,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -642,9 +644,11 @@ class _DebtsScreenState extends State<DebtsScreen> {
         if (_settings.showStatus && late) {
           parts.add('Atrasado (${d.monthsLate} m)');
         }
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          child: ListTile(
+        return FadeIn(
+          delay: Duration(milliseconds: index * 30),
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: ListTile(
             leading: CircleAvatar(
               backgroundColor: debtColor(d.color, index).withValues(alpha: 0.15),
               child: Icon(debtTypeIcon(d.type),
@@ -692,6 +696,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
                 const PopupMenuItem(value: 'delete', child: Text('Eliminar')),
               ],
             ),
+          ),
           ),
         );
       },

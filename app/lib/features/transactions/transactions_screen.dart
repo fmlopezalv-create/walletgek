@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/app_state.dart';
+import '../../core/micro_animations.dart';
 import '../../core/money_widgets.dart';
+import '../../core/skeleton.dart';
+import '../../core/storage.dart';
 import '../categories/category_model.dart';
 import 'add_transaction_screen.dart';
 import 'transaction_model.dart';
@@ -22,12 +25,25 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   bool _loading = true;
   String? _error;
   String _filter = 'all'; // all | income | expense
+  String _style = 'fintech'; // fintech | cards | dashboard
 
   @override
   void initState() {
     super.initState();
     AppState.instance.dataVersionNotifier.addListener(_onDataChanged);
     _load();
+    _loadStyle();
+  }
+
+  Future<void> _loadStyle() async {
+    final saved = await TokenStorage.readTxStyle();
+    if (saved != null && mounted) {
+      setState(() => _style = saved);
+    }
+  }
+
+  Future<void> _saveStyle() async {
+    await TokenStorage.saveTxStyle(_style);
   }
 
   @override
@@ -191,12 +207,64 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 
+  void _openStyleSettings() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text('Estilo visual de la lista',
+                  style: Theme.of(ctx).textTheme.titleMedium),
+            ),
+            _styleOption(ctx, 'fintech', Icons.view_agenda_outlined,
+                'Fintech minimalista', 'Filas limpias y compactas'),
+            _styleOption(ctx, 'cards', Icons.credit_card, 'Tarjetas con color',
+                'Tarjetas con acento según tipo'),
+            _styleOption(ctx, 'dashboard', Icons.dashboard_outlined,
+                'Dashboard', 'Resumen + tarjetas animadas'),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _styleOption(BuildContext ctx, String value, IconData icon,
+      String title, String subtitle) {
+    final selected = _style == value;
+    return ListTile(
+      leading: Icon(icon, color: selected ? AppColors.emerald : null),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: selected
+          ? const Icon(Icons.check, color: AppColors.emerald)
+          : null,
+      onTap: () async {
+        Navigator.of(ctx).pop();
+        if (_style != value) {
+          setState(() => _style = value);
+          await _saveStyle();
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Movimientos'),
         actions: [
+          IconButton(
+            onPressed: _openStyleSettings,
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Estilo de la lista',
+          ),
           IconButton(
             onPressed: _showCategories,
             icon: const Icon(Icons.category_outlined),
@@ -220,9 +288,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 ButtonSegment(value: 'expense', label: Text('Gastos')),
               ],
               selected: {_filter},
+              showSelectedIcon: false,
               onSelectionChanged: (s) => setState(() => _filter = s.first),
             ),
           ),
+          if (!_loading && _error == null) _summaryHeader(),
           Expanded(child: _buildList()),
         ],
       ),
@@ -232,20 +302,20 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
           );
         },
-        child: const Icon(Icons.add),
+        child: const PressableScale(child: Icon(Icons.add)),
       ),
     );
   }
 
   Widget _buildList() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const SkeletonList();
     }
     if (_error != null) {
       return Center(child: Text('Error: $_error'));
     }
     final list = _filtered;
-    return RefreshIndicator(
+    return RippleRefresh(
       onRefresh: _load,
       child: list.isEmpty
           ? ListView(
@@ -261,47 +331,160 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 ),
               ],
             )
-          : ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 88),
-              itemCount: list.length,
-              itemBuilder: (context, index) {
-                final t = list[index];
-                final isIncome = t.type == 'income';
-                return _transactionCard(t, isIncome);
-              },
-            ),
+          : _style == 'fintech'
+              ? ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(0, 4, 0, 88),
+                  itemCount: list.length,
+                  separatorBuilder: (_, _) => Divider(
+                    height: 1,
+                    thickness: 0.5,
+                    color: Theme.of(context)
+                        .dividerColor
+                        .withValues(alpha: 0.4),
+                  ),
+                  itemBuilder: (context, index) {
+                    final t = list[index];
+                    return FadeIn(
+                      delay: Duration(milliseconds: index * 30),
+                      child: _fintechTile(t, t.type == 'income'),
+                    );
+                  },
+                )
+              : ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(0, 4, 0, 88),
+                  itemCount: list.length,
+                  itemBuilder: (context, index) {
+                    final t = list[index];
+                    final isIncome = t.type == 'income';
+                    return _style == 'cards'
+                        ? FadeIn(
+                            delay: Duration(milliseconds: index * 30),
+                            child: _cardTile(t, isIncome),
+                          )
+                        : _dashboardTile(t, isIncome, index);
+                  },
+                ),
     );
   }
 
-  Widget _transactionCard(Transaction t, bool isIncome) {
+  String _txEmoji(Transaction t, bool isIncome) {
+    if (t.category != null) return categoryEmoji(t.category!.name);
+    return isIncome ? '💰' : '🧾';
+  }
+
+  /// Fecha · nota (la nota solo si hay categoría, para no duplicar el título).
+  String _subtitleOf(Transaction t) {
+    return [
+      _formatDate(t.date),
+      if (t.category != null && t.note != null && t.note!.isNotEmpty)
+        t.note!,
+    ].join(' · ');
+  }
+
+  Widget _txMenu(Transaction t) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert, size: 20),
+      onSelected: (v) {
+        if (v == 'edit') {
+          _edit(t);
+        } else if (v == 'delete') {
+          _delete(t);
+        }
+      },
+      itemBuilder: (ctx) => const [
+        PopupMenuItem(value: 'edit', child: Text('Editar')),
+        PopupMenuItem(value: 'delete', child: Text('Eliminar')),
+      ],
+    );
+  }
+
+  // Opción 1 — Fintech minimalista.
+  Widget _fintechTile(Transaction t, bool isIncome) {
+    final color = isIncome ? AppColors.emerald : AppColors.coral;
+    return InkWell(
+      onTap: () => _edit(t),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Text(_txEmoji(t, isIncome),
+                  style: const TextStyle(fontSize: 18)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t.displayTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(_subtitleOf(t),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            MoneyText(
+              t.amount,
+              sign: isIncome,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                color: color,
+              ),
+            ),
+            const SizedBox(width: 4),
+            _txMenu(t),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Opción 2 — Tarjetas con jerarquía y color.
+  Widget _cardTile(Transaction t, bool isIncome) {
     final color = isIncome ? AppColors.emerald : AppColors.coral;
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      elevation: 0,
+      color: color.withValues(alpha: 0.04),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: color.withValues(alpha: 0.5), width: 1.2),
+      ),
       child: ListTile(
         onTap: () => _edit(t),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         leading: CircleAvatar(
           backgroundColor: color.withValues(alpha: 0.15),
-          child: Icon(
-            isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-            color: color,
-            size: 20,
-          ),
+          child: Text(_txEmoji(t, isIncome),
+              style: const TextStyle(fontSize: 18)),
         ),
-        title: Text(
-          t.displayTitle,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          [
-            _formatDate(t.date),
-            if (t.category != null && t.note != null && t.note!.isNotEmpty)
-              t.note!,
-          ].join(' · '),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        title: Text(t.displayTitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(_subtitleOf(t),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -310,28 +493,148 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               t.amount,
               sign: isIncome,
               style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
                 color: color,
               ),
             ),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, size: 20),
-              onSelected: (v) {
-                if (v == 'edit') {
-                  _edit(t);
-                } else if (v == 'delete') {
-                  _delete(t);
-                }
-              },
-              itemBuilder: (ctx) => const [
-                PopupMenuItem(value: 'edit', child: Text('Editar')),
-                PopupMenuItem(value: 'delete', child: Text('Eliminar')),
-              ],
-            ),
+            const SizedBox(width: 4),
+            _txMenu(t),
           ],
         ),
       ),
+    );
+  }
+
+  // Opción 4 — Dashboard con resumen y tarjetas animadas.
+  Widget _dashboardTile(Transaction t, bool isIncome, int index) {
+    final color = isIncome ? AppColors.emerald : AppColors.coral;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 260 + (index.clamp(0, 20) * 40)),
+      builder: (context, v, child) => Opacity(
+        opacity: v,
+        child: Transform.translate(
+          offset: Offset(0, (1 - v) * 16),
+          child: child,
+        ),
+      ),
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        elevation: 1,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: ListTile(
+          onTap: () => _edit(t),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          leading: CircleAvatar(
+            backgroundColor: color.withValues(alpha: 0.15),
+            child: Text(_txEmoji(t, isIncome),
+                style: const TextStyle(fontSize: 18)),
+          ),
+          title: Text(t.displayTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(_subtitleOf(t),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              MoneyText(
+                t.amount,
+                sign: isIncome,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: color,
+                ),
+              ),
+              const SizedBox(width: 4),
+              _txMenu(t),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _summaryHeader() {
+    final income = _transactions
+        .where((t) => t.type == 'income')
+        .fold<double>(0, (s, t) => s + t.amount);
+    final expense = _transactions
+        .where((t) => t.type == 'expense')
+        .fold<double>(0, (s, t) => s + t.amount);
+    final balance = income - expense;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: _stat('Ingresos', income, AppColors.emerald)),
+          _statDivider(),
+          Expanded(child: _stat('Gastos', expense, AppColors.coral)),
+          _statDivider(),
+          Expanded(child: _stat('Balance', balance, AppColors.slate)),
+        ],
+      ),
+    );
+  }
+
+  Widget _stat(String label, double value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              AppState.instance.formatAmount(value),
+              maxLines: 1,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statDivider() {
+    return Container(
+      width: 1,
+      height: 26,
+      color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
     );
   }
 }

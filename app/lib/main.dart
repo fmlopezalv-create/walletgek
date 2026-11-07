@@ -5,6 +5,7 @@ import 'core/app_state.dart';
 import 'core/connectivity.dart';
 import 'core/notification_service.dart';
 import 'core/offline_sync.dart';
+import 'core/splash_screen.dart';
 import 'core/storage.dart';
 import 'core/theme.dart';
 import 'features/auth/login_screen.dart';
@@ -43,7 +44,9 @@ class WalletgekApp extends StatelessWidget {
           theme: buildTheme(),
           darkTheme: buildDarkTheme(),
           themeMode: themeMode,
-          home: loggedIn ? const MainShell() : const LoginScreen(),
+          home: SplashScreen(
+            next: loggedIn ? const MainShell() : const LoginScreen(),
+          ),
         );
       },
     );

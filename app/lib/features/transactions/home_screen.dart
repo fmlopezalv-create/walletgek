@@ -7,8 +7,10 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_state.dart';
 import '../../core/connectivity.dart';
+import '../../core/micro_animations.dart';
 import '../../core/money_widgets.dart';
 import '../../core/profile_avatar.dart';
+import '../../core/skeleton.dart';
 import '../../core/storage.dart';
 import '../advisor/advisor_screen.dart';
 import '../babylon/babylon_screen.dart';
@@ -327,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Secciones móviles en carrusel horizontal
             Expanded(
               child: _loading && _home == null
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const SkeletonList()
                   : _sectionsPager(),
             ),
           ],
@@ -335,7 +337,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddSheet,
-        child: const Icon(Icons.add),
+        child: const PressableScale(child: Icon(Icons.add)),
       ),
     );
   }
@@ -381,7 +383,7 @@ class _HomeScreenState extends State<HomeScreen> {
             controller: _pageController,
             itemCount: pages.length,
             itemBuilder: (context, index) => LayoutBuilder(
-              builder: (context, constraints) => RefreshIndicator(
+              builder: (context, constraints) => RippleRefresh(
                 onRefresh: _load,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -727,15 +729,23 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _balanceCard(HomeDashboard home) {
     final up = (home.variation ?? 0) >= 0;
     final variation = home.variation;
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.midnightNavy, AppColors.navy700],
-        ),
-        borderRadius: BorderRadius.circular(20),
+    return BorderShine(
+      color: AppColors.champagneGold,
+      radius: 20,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.navy700,
+              AppColors.midnightNavy,
+              AppColors.navy700,
+            ],
+            stops: [0.0, 0.5, 1.0],
+          ),
+          borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.25),
@@ -852,6 +862,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ],
+      ),
       ),
     );
   }
@@ -1037,14 +1048,102 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        AnimatedProgress(
-          value: score / 100.0,
-          color: color,
-          backgroundColor: Colors.white.withValues(alpha: 0.12),
-          height: 8,
+        const SizedBox(height: 8),
+        _healthBar(score),
+        const SizedBox(height: 5),
+        Row(
+          children: const [
+            Expanded(
+              child: Text('Bajo',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white54, fontSize: 10)),
+            ),
+            Expanded(
+              child: Text('Medio',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white54, fontSize: 10)),
+            ),
+            Expanded(
+              child: Text('Alto',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white54, fontSize: 10)),
+            ),
+          ],
         ),
       ],
+    );
+  }
+
+  /// Barra de salud con degradado rojo → ámbar → verde y separaciones
+  /// por niveles (Bajo / Medio / Alto).
+  Widget _healthBar(double score) {
+    final value = (score / 100).clamp(0.0, 1.0);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: SizedBox(
+        height: 10,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.maxWidth;
+            return TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: value),
+              duration: const Duration(milliseconds: 900),
+              curve: Curves.easeOutCubic,
+              builder: (context, v, _) {
+                final fillW = w * v;
+                return Stack(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: Container(color: AppColors.coral)),
+                        Container(
+                          width: 2,
+                          color:
+                              AppColors.midnightBlack.withValues(alpha: 0.45),
+                        ),
+                        Expanded(child: Container(color: AppColors.amber)),
+                        Container(
+                          width: 2,
+                          color:
+                              AppColors.midnightBlack.withValues(alpha: 0.45),
+                        ),
+                        Expanded(child: Container(color: AppColors.emerald)),
+                      ],
+                    ),
+                    Positioned(
+                      left: fillW,
+                      top: 0,
+                      bottom: 0,
+                      width: w - fillW,
+                      child:
+                          Container(color: Colors.white.withValues(alpha: 0.14)),
+                    ),
+                    // Barrita vertical que marca el nivel actual.
+                    Positioned(
+                      left: (fillW - 1.5).clamp(0.0, w - 3.0),
+                      top: -1,
+                      bottom: -1,
+                      width: 3,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.4),
+                              blurRadius: 2,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
+      ),
     );
   }
 

@@ -7,6 +7,8 @@ import '../../core/app_colors.dart';
 import '../../core/app_state.dart';
 import '../../core/country.dart';
 import '../../core/currency.dart';
+import '../../core/micro_animations.dart';
+import '../../core/skeleton.dart';
 import '../auth/auth_service.dart';
 import '../auth/login_screen.dart';
 import 'backup_service.dart';
@@ -386,47 +388,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Perfil')),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (_loading)
-              const Padding(
-                padding: EdgeInsets.all(40),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (_error != null)
-              Padding(
-                padding: const EdgeInsets.all(40),
-                child: Center(child: Text('Error: $_error')),
-              )
-            else ...[
-              _header(context),
-              const SizedBox(height: 16),
-              _settingsCard(context),
-              const SizedBox(height: 16),
-              _dataCard(context),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: _logout,
-                icon: const Icon(Icons.logout, color: AppColors.coral),
-                label: const Text('Cerrar sesión',
-                    style: TextStyle(color: AppColors.coral)),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  side: const BorderSide(color: AppColors.coral),
-                ),
+      body: _loading
+          ? const SkeletonList()
+          : RippleRefresh(
+              onRefresh: _load,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Center(child: Text('Error: $_error')),
+                    )
+                  else ...[
+                    _header(context),
+                    const SizedBox(height: 16),
+                    _settingsCard(context),
+                    const SizedBox(height: 16),
+                    _dataCard(context),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: _logout,
+                      icon: const Icon(Icons.logout, color: AppColors.coral),
+                      label: const Text('Cerrar sesión',
+                          style: TextStyle(color: AppColors.coral)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: AppColors.coral),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Center(
+                      child: Text('walletgek',
+                          style: Theme.of(context).textTheme.bodySmall),
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: 24),
-              Center(
-                child: Text('walletgek',
-                    style: Theme.of(context).textTheme.bodySmall),
-              ),
-            ],
-          ],
-        ),
-      ),
+            ),
     );
   }
 

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/app_state.dart';
+import '../../core/micro_animations.dart';
+import '../../core/skeleton.dart';
 import '../../core/storage.dart';
 import '../auth/auth_service.dart';
 import '../debts/debt_colors.dart';
@@ -323,12 +325,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const SkeletonList();
     if (_error != null) return Center(child: Text('Error: $_error'));
     final s = _summary!;
     final relevant =
         s.categories.where((c) => c.budget > 0 || c.spent > 0).toList();
-    return RefreshIndicator(
+    return RippleRefresh(
       onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.all(16),

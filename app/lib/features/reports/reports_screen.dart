@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/app_state.dart';
+import '../../core/micro_animations.dart';
+import '../../core/skeleton.dart';
 import '../budget/budget_model.dart';
 import '../budget/budget_service.dart';
 import '../budget/budget_screen.dart';
@@ -75,31 +77,26 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: ValueListenableBuilder<bool>(
-          valueListenable: AppState.instance.hideAmountsNotifier,
-          builder: (context, hide, _) => ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              if (_loading)
-                const Padding(
-                  padding: EdgeInsets.all(40),
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else ...[
-                if (_health != null) _healthCard(context, _health!),
-                const SizedBox(height: 16),
-                if (_summary != null) _budgetCard(context, _summary!),
-                const SizedBox(height: 16),
-                if (_debts.isNotEmpty) _debtsCard(context),
-                const SizedBox(height: 16),
-                _shortcutsCard(context),
-              ],
-            ],
-          ),
-        ),
-      ),
+      body: _loading
+          ? const SkeletonList()
+          : RippleRefresh(
+              onRefresh: _load,
+              child: ValueListenableBuilder<bool>(
+                valueListenable: AppState.instance.hideAmountsNotifier,
+                builder: (context, hide, _) => ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    if (_health != null) _healthCard(context, _health!),
+                    const SizedBox(height: 16),
+                    if (_summary != null) _budgetCard(context, _summary!),
+                    const SizedBox(height: 16),
+                    if (_debts.isNotEmpty) _debtsCard(context),
+                    const SizedBox(height: 16),
+                    _shortcutsCard(context),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 

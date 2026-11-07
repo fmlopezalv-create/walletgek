@@ -6,6 +6,32 @@ import 'app_colors.dart';
 /// Cifras tabulares: los números mantienen el mismo ancho, ideales para montos.
 const _tabular = [FontFeature.tabularFigures()];
 
+/// Transición de navegación: desvanecimiento + ligero deslizamiento vertical.
+class _FadeSlideTransitionsBuilder extends PageTransitionsBuilder {
+  const _FadeSlideTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final curved =
+        CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+    return FadeTransition(
+      opacity: curved,
+      child: SlideTransition(
+        position:
+            Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
+                .animate(curved),
+        child: child,
+      ),
+    );
+  }
+}
+
 TextTheme _textTheme(TextTheme base) {
   return base.copyWith(
     // Títulos — Plus Jakarta Sans (preservando el color del tema)
@@ -58,6 +84,15 @@ TextTheme _textTheme(TextTheme base) {
 ThemeData _base(ThemeData theme) {
   return theme.copyWith(
     textTheme: _textTheme(theme.textTheme),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: _FadeSlideTransitionsBuilder(),
+        TargetPlatform.iOS: _FadeSlideTransitionsBuilder(),
+        TargetPlatform.windows: _FadeSlideTransitionsBuilder(),
+        TargetPlatform.macOS: _FadeSlideTransitionsBuilder(),
+        TargetPlatform.linux: _FadeSlideTransitionsBuilder(),
+      },
+    ),
     cardTheme: CardThemeData(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 0,
