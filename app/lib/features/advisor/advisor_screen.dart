@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/app_colors.dart';
+import '../../core/app_state.dart';
 import 'advisor_service.dart';
 
 class AdvisorScreen extends StatefulWidget {
@@ -18,15 +22,13 @@ class _AdvisorScreenState extends State<AdvisorScreen> {
   final List<_ChatMessage> _messages = [];
   bool _sending = false;
 
+  String get _historyKey =>
+      'advisor_history_${AppState.instance.userEmail}';
+
   @override
   void initState() {
     super.initState();
-    _messages.add(const _ChatMessage(
-      text:
-          'Hola 👋 Soy tu asesor financiero. Cuéntame qué quieres revisar: '
-          'tus deudas, tu presupuesto, cómo ahorrar más…',
-      isUser: false,
-    ));
+    _loadHistory();
   }
 
   @override
@@ -34,6 +36,51 @@ class _AdvisorScreenState extends State<AdvisorScreen> {
     _controller.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadHistory() async {
+    const greeting = _ChatMessage(
+      text: 'Hola 👋 Soy tu asesor financiero. Cuéntame qué quieres revisar: '
+          'tus deudas, tu presupuesto, cómo ahorrar más…',
+      isUser: false,
+    );
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final raw = sp.getString(_historyKey);
+      if (raw != null && raw.isNotEmpty) {
+        final list = (jsonDecode(raw) as List)
+            .map((e) =>
+                _ChatMessage.fromJson((e as Map).cast<String, dynamic>()))
+            .toList();
+        if (mounted) setState(() => _messages.addAll(list));
+        return;
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _messages.add(greeting));
+  }
+
+  Future<void> _saveHistory() async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final json = jsonEncode(_messages.map((m) => m.toJson()).toList());
+      await sp.setString(_historyKey, json);
+    } catch (_) {}
+  }
+
+  String _friendlyError(String raw) {
+    final r = raw.toLowerCase();
+    if (r.contains('deepseek_api_key') || r.contains('falta configurar')) {
+      return 'El asesor aún no está configurado en el servidor. '
+          'Inténtalo más tarde.';
+    }
+    if (r.contains('premium')) {
+      return 'El asesor financiero es una función Premium. '
+          'Activa Premium para usarlo.';
+    }
+    if (r.contains('demasiados') || r.contains('429')) {
+      return 'Has hecho muchas preguntas. Espera unos minutos e inténtalo de nuevo.';
+    }
+    return 'No pude obtener una respuesta ahora. Inténtalo de nuevo.';
   }
 
   Future<void> _send() async {
@@ -44,6 +91,7 @@ class _AdvisorScreenState extends State<AdvisorScreen> {
       _sending = true;
     });
     _controller.clear();
+    _saveHistory();
     _scrollToBottom();
 
     try {
@@ -52,16 +100,18 @@ class _AdvisorScreenState extends State<AdvisorScreen> {
         setState(() {
           _messages.add(_ChatMessage(text: reply, isUser: false));
         });
+        _saveHistory();
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _messages.add(_ChatMessage(
-            text: 'No pude obtener respuesta: $e',
+            text: _friendlyError(e.toString()),
             isUser: false,
             isError: true,
           ));
         });
+        _saveHistory();
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -110,12 +160,26 @@ class _AdvisorScreenState extends State<AdvisorScreen> {
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Text(
+              'Los consejos son orientativos y no sustituyen la asesoría de un '
+              'profesional financiero certificado.',
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+          ),
           Expanded(
             child: ListView.builder(
               controller: _scroll,
               padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) => _bubble(_messages[index]),
+              itemCount: _messages.length + (_sending ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (_sending && index == _messages.length) {
+                  return _typingBubble();
+                }
+                return _bubble(_messages[index]);
+              },
             ),
           ),
           SafeArea(
@@ -143,6 +207,24 @@ class _AdvisorScreenState extends State<AdvisorScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _typingBubble() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Text(
+          'Escribiendo…',
+          style: TextStyle(fontStyle: FontStyle.italic),
+        ),
       ),
     );
   }
@@ -191,4 +273,16 @@ class _ChatMessage {
     required this.isUser,
     this.isError = false,
   });
+
+  Map<String, dynamic> toJson() => {
+        'text': text,
+        'isUser': isUser,
+        'isError': isError,
+      };
+
+  factory _ChatMessage.fromJson(Map<String, dynamic> json) => _ChatMessage(
+        text: json['text'] as String? ?? '',
+        isUser: json['isUser'] == true,
+        isError: json['isError'] == true,
+      );
 }

@@ -16,9 +16,15 @@ async function askAdvisor(req, res) {
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Escribe un mensaje' });
   }
+  const text = message.trim();
+  if (text.length > 1000) {
+    return res.status(400).json({
+      error: 'El mensaje es demasiado largo (máximo 1000 caracteres)',
+    });
+  }
 
   try {
-    const { reply } = await chat(req.userId, message.trim());
+    const { reply } = await chat(req.userId, text);
     return res.json({ reply });
   } catch (e) {
     const status = e.statusCode || 500;

@@ -32,4 +32,36 @@ setInterval(() => {
   }
 }, WINDOW_MS).unref();
 
-module.exports = { rateLimit };
+// Rate limit específico para el asesor IA (llamadas a DeepSeek, con costo).
+// Se aplica por usuario (disponible tras authMiddleware).
+const advisorHits = new Map();
+const ADVISOR_WINDOW_MS = 5 * 60 * 1000; // 5 minutos
+const ADVISOR_MAX_REQUESTS = 40;
+
+function advisorRateLimit(req, res, next) {
+  const key = req.userId || req.ip || 'unknown';
+  const now = Date.now();
+  const entry = advisorHits.get(key);
+
+  if (!entry || now - entry.start > ADVISOR_WINDOW_MS) {
+    advisorHits.set(key, { start: now, count: 1 });
+    return next();
+  }
+
+  entry.count += 1;
+  if (entry.count > ADVISOR_MAX_REQUESTS) {
+    return res.status(429).json({
+      error: 'Has hecho muchas preguntas. Espera unos minutos e inténtalo de nuevo.',
+    });
+  }
+  return next();
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of advisorHits.entries()) {
+    if (now - value.start > ADVISOR_WINDOW_MS) advisorHits.delete(key);
+  }
+}, ADVISOR_WINDOW_MS).unref();
+
+module.exports = { rateLimit, advisorRateLimit };
