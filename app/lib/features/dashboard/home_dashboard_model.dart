@@ -26,6 +26,15 @@ class UpcomingPayment {
             : null,
         minimumPayment: double.parse(json['minimumPayment'].toString()),
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'color': color,
+        'type': type,
+        'dueDate': dueDate?.toIso8601String(),
+        'minimumPayment': minimumPayment,
+      };
 }
 
 class TopCategory {
@@ -47,6 +56,13 @@ class TopCategory {
         spent: double.parse(json['spent'].toString()),
         budget: double.parse(json['budget'].toString()),
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'spent': spent,
+        'budget': budget,
+      };
 }
 
 class HomeDashboard {
@@ -92,4 +108,18 @@ class HomeDashboard {
             .map((e) => TopCategory.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
+
+  Map<String, dynamic> toJson() => {
+        'month': month,
+        'balance': balance,
+        'variation': variation,
+        'income': income,
+        'expense': expense,
+        'upcomingPayments':
+            upcomingPayments.map((e) => e.toJson()).toList(),
+        'debtTotal': debtTotal,
+        'debtMonthly': debtMonthly,
+        'debtCount': debtCount,
+        'topCategories': topCategories.map((e) => e.toJson()).toList(),
+      };
 }

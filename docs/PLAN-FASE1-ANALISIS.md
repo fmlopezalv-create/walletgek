@@ -315,6 +315,7 @@ Una historia de usuario está **Done** sólo si se cumplen **todas** estas condi
 - Cuentas (efectivo/banco/tarjeta).
 - Pago real de suscripción (Stripe).
 - **Autenticación por código al correo (magic link) + "Continuar con Google/Outlook"** *(ver §13.1)*.
+- **Modo offline** *(ver §13.2)*: cache local de datos + registro de transacciones sin conexión con sincronización al reconectar.
 
 ---
 
@@ -362,3 +363,21 @@ Una historia de usuario está **Done** sólo si se cumplen **todas** estas condi
 **Pendientes de verificar antes de implementar:**
 - Límites y tier gratuito exactos de Zoho ZeptoMail (pueden haber cambiado).
 - Vincular identidades (Google + email+contraseña) a una misma cuenta sin duplicarlas.
+
+---
+
+## 13.2 Decisión de modo offline (en implementación)
+
+**Objetivo:** que el usuario pueda usar la app sin conexión a internet.
+
+**Alcance acordado:**
+1. **Cache local** de los datos del usuario (movimientos, deudas, categorías, presupuesto) en el dispositivo.
+2. **Registrar movimientos sin conexión**: se guardan localmente y se marcan como "pendientes de sincronizar".
+3. **Sincronización al recuperar internet**: se envían los pendientes al backend y se refresca la cache.
+4. **Indicador visual** de estado sin conexión.
+
+**Limitaciones conocidas:**
+- El asesor IA y el inicio de sesión por primera vez siempre requieren internet.
+- La sincronización es de movimientos (ingresos/gastos); deudas y ediciones offline se evalúan después.
+
+**Enfoque técnico:** almacenamiento local en el dispositivo (sin base SQL compleja) + cola de sincronización simple, manteniendo la nube (Neon) como fuente de verdad.

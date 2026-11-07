@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'core/api_client.dart';
 import 'core/app_state.dart';
+import 'core/connectivity.dart';
+import 'core/offline_sync.dart';
 import 'core/storage.dart';
 import 'core/theme.dart';
 import 'features/auth/login_screen.dart';
@@ -12,6 +14,10 @@ Future<void> main() async {
   final token = await TokenStorage.read();
   ApiClient.instance.token = token;
   await AppState.instance.load();
+  await ConnectivityService.instance.init();
+  if (token != null) {
+    await OfflineSync.instance.init();
+  }
   runApp(WalletgekApp(loggedIn: token != null));
 }
 

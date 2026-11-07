@@ -27,4 +27,13 @@ class Transaction {
             ? Category.fromJson(json['category'] as Map<String, dynamic>)
             : null,
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'amount': amount,
+        'type': type,
+        'note': note,
+        'date': date.toIso8601String(),
+        'category': category?.toJson(),
+      };
 }

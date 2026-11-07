@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/app_state.dart';
+import '../../core/connectivity.dart';
 import '../../core/money_widgets.dart';
 import '../../core/profile_avatar.dart';
 import '../../core/storage.dart';
@@ -245,7 +246,41 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: _header(),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            // Indicador de estado sin conexión
+            ValueListenableBuilder<bool>(
+              valueListenable: ConnectivityService.instance.online,
+              builder: (context, online, _) {
+                if (online) return const SizedBox.shrink();
+                return Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.amber.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppColors.amber.withValues(alpha: 0.5)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.cloud_off,
+                          size: 16, color: AppColors.amber),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Sin conexión · mostrando datos guardados',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.amber),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 4),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),

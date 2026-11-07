@@ -1,11 +1,37 @@
+import 'dart:convert';
+
 import '../../core/api_client.dart';
+import '../../core/connectivity.dart';
+import '../../core/offline_store.dart';
 import 'debt_model.dart';
 import 'debt_plan_model.dart';
 
 class DebtService {
   Future<List<Debt>> listDebts() async {
-    final data = await ApiClient.instance.get('/debts') as List;
-    return data.map((e) => Debt.fromJson(e as Map<String, dynamic>)).toList();
+    if (!ConnectivityService.instance.online.value) {
+      final raw = await OfflineStore.instance.loadDebts();
+      if (raw != null) {
+        return (jsonDecode(raw) as List)
+            .map((e) => Debt.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
+    }
+    try {
+      final data = await ApiClient.instance.get('/debts') as List;
+      await OfflineStore.instance.saveDebts(jsonEncode(data));
+      return data
+          .map((e) => Debt.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      final raw = await OfflineStore.instance.loadDebts();
+      if (raw != null) {
+        return (jsonDecode(raw) as List)
+            .map((e) => Debt.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
+    }
   }
 
   Future<Debt> createDebt({

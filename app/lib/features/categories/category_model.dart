@@ -22,4 +22,12 @@ class Category {
             ? double.parse(json['monthlyBudget'].toString())
             : null,
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'type': type,
+        'color': color,
+        'monthlyBudget': monthlyBudget,
+      };
 }

@@ -52,4 +52,22 @@ class Debt {
         paidInstallments: (json['paidInstallments'] as num?)?.toInt() ?? 0,
         details: json['details'] as Map<String, dynamic>?,
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'type': type,
+        'color': color,
+        'balance': balance,
+        'interestRate': interestRate,
+        'minimumPayment': minimumPayment,
+        'dueDate': dueDate?.toIso8601String(),
+        'institution': institution,
+        'status': status,
+        'monthsLate': monthsLate,
+        'paymentType': paymentType,
+        'totalInstallments': totalInstallments,
+        'paidInstallments': paidInstallments,
+        'details': details,
+      };
 }
