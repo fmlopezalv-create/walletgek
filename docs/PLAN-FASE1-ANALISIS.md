@@ -314,6 +314,7 @@ Una historia de usuario está **Done** sólo si se cumplen **todas** estas condi
 - Modo familiar/multiusuario.
 - Cuentas (efectivo/banco/tarjeta).
 - Pago real de suscripción (Stripe).
+- **Autenticación por código al correo (magic link) + "Continuar con Google/Outlook"** *(ver §13.1)*.
 
 ---
 
@@ -338,3 +339,26 @@ Una historia de usuario está **Done** sólo si se cumplen **todas** estas condi
 | Idioma | **Español** (i18n español + inglés **pendiente**) |
 
 **Próximo paso:** configurar el entorno Flutter (SDK + Android) y arrancar el **Sprint 1** (autenticación + registro de transacciones + categorías).
+
+---
+
+## 13.1 Decisión de autenticación para la siguiente fase (anotada, pendiente de implementar)
+
+**Enfoque elegido:** acceso sin contraseña mediante **código de verificación al correo (magic link)**, y opcionalmente **"Continuar con Google"** (OAuth). Las cuentas se vinculan al usuario por su **email verificado**, y todos sus registros (movimientos, deudas, presupuesto, premium) siguen guardados en la base de datos (Neon) y se recuperan al volver a entrar.
+
+**Proveedor de envío elegido:** **Zoho ZeptoMail** (email transaccional), usando el dominio propio **treegek.com**.
+
+**Detalles acordados:**
+- Remitente sugerido: `walletgek@treegek.com` (o `no-reply@treegek.com`).
+- Dominio verificado en ZeptoMail con registros SPF/DKIM.
+- Código de un solo uso con expiración y rate limiting en el envío (ya existe la base del rate limiter).
+- Los datos financieros **nunca se envían a Google/Zoho**: solo se usa el email para autenticar.
+
+**Orden de implementación sugerido:**
+1. **Magic link / código al correo** con Zoho ZeptoMail (Fase 1).
+2. **"Continuar con Google"** (OAuth, Fase 2).
+3. **Outlook/Microsoft** (OAuth, Fase 3 — opcional).
+
+**Pendientes de verificar antes de implementar:**
+- Límites y tier gratuito exactos de Zoho ZeptoMail (pueden haber cambiado).
+- Vincular identidades (Google + email+contraseña) a una misma cuenta sin duplicarlas.
