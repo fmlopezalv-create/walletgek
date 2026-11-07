@@ -58,6 +58,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         note: _note.text.trim(),
         categoryId: _categoryId,
       );
+      AppState.instance.notifyDataChanged();
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       setState(() => _error = e.toString());
@@ -112,6 +113,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     budgetController.text.replaceAll(',', '.'),
                   ),
                 );
+                AppState.instance.notifyDataChanged();
                 if (dialogContext.mounted) {
                   Navigator.of(dialogContext).pop(category);
                 }

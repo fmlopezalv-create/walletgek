@@ -30,7 +30,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    AppState.instance.dataVersionNotifier.addListener(_onDataChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    AppState.instance.dataVersionNotifier.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
+  void _onDataChanged() {
+    if (mounted) _load();
   }
 
   Future<void> _load() async {
@@ -147,7 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SnackBar(
                         content: Text('Datos restaurados correctamente')),
                   );
-                  _load();
+                  AppState.instance.notifyDataChanged();
                 }
               } catch (e) {
                 if (ctx.mounted) {
@@ -190,7 +201,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Todos los datos fueron eliminados')),
         );
-        _load();
+        AppState.instance.notifyDataChanged();
       }
     } catch (e) {
       if (mounted) {
@@ -227,7 +238,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 try {
                   final p = await _service.updateProfile(currency: currency);
                   if (ctx.mounted) Navigator.of(ctx).pop();
-                  if (mounted) setState(() => _profile = p);
+                  if (mounted) {
+                    setState(() => _profile = p);
+                    AppState.instance.notifyDataChanged();
+                  }
                 } catch (e) {
                   if (ctx.mounted) {
                     ScaffoldMessenger.of(ctx)
@@ -270,7 +284,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 try {
                   final p = await _service.updateProfile(country: country);
                   if (ctx.mounted) Navigator.of(ctx).pop();
-                  if (mounted) setState(() => _profile = p);
+                  if (mounted) {
+                    setState(() => _profile = p);
+                    AppState.instance.notifyDataChanged();
+                  }
                 } catch (e) {
                   if (ctx.mounted) {
                     ScaffoldMessenger.of(ctx)
@@ -313,7 +330,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               try {
                 final p = await _service.updateProfile(monthlyBudget: v);
                 if (ctx.mounted) Navigator.of(ctx).pop();
-                if (mounted) setState(() => _profile = p);
+                if (mounted) {
+                  setState(() => _profile = p);
+                  AppState.instance.notifyDataChanged();
+                }
               } catch (e) {
                 if (ctx.mounted) {
                   ScaffoldMessenger.of(ctx)

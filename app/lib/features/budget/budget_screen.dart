@@ -71,8 +71,19 @@ class _BudgetScreenState extends State<BudgetScreen> {
   @override
   void initState() {
     super.initState();
+    AppState.instance.dataVersionNotifier.addListener(_onDataChanged);
     _loadSettings();
     _load();
+  }
+
+  @override
+  void dispose() {
+    AppState.instance.dataVersionNotifier.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
+  void _onDataChanged() {
+    if (mounted) _load();
   }
 
   Future<void> _loadSettings() async {
@@ -188,7 +199,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               try {
                 await _categoryService.updateCategory(c.id, monthlyBudget: v);
                 if (ctx.mounted) Navigator.of(ctx).pop();
-                _load();
+                AppState.instance.notifyDataChanged();
               } catch (e) {
                 if (ctx.mounted) {
                   ScaffoldMessenger.of(ctx)
@@ -229,7 +240,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               try {
                 await _auth.updateMonthlyBudget(v);
                 if (ctx.mounted) Navigator.of(ctx).pop();
-                _load();
+                AppState.instance.notifyDataChanged();
               } catch (e) {
                 if (ctx.mounted) {
                   ScaffoldMessenger.of(ctx)

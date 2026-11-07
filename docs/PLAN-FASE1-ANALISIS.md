@@ -263,9 +263,9 @@ Una historia de usuario está **Done** sólo si se cumplen **todas** estas condi
 | HU-3.2 | Quiero un dashboard con mis datos clave de un vistazo | Balance, variación vs mes anterior, vencimientos, deudas, gastos y movimientos recientes | 8 | Must | ✅ Hecho |
 | HU-3.3 | Quiero configurar el orden y visibilidad de secciones | Reordenar y ocultar/mostrar secciones; persistente | 3 | Should | ✅ Hecho |
 | HU-3.4 | Quiero reportes de presupuesto y deudas | Resumen de presupuesto con categorías y plan de deudas | 5 | Should | ✅ Hecho |
-| HU-3.5 | Quiero un fondo de emergencia con objetivo | Meta de 3–6 meses de gastos esenciales y progreso | 5 | Could | ⬜ Pendiente |
+| HU-3.5 | Quiero un fondo de emergencia con objetivo | Meta de 3–6 meses de gastos esenciales y progreso | 5 | Could | ✅ Hecho |
 
-**Total Sprint 3: 24 pts (19 hechos + 5 pendiente).**
+**Total Sprint 3: 24 pts (24 hechos).**
 
 ### Sprint 4 — Asesor financiero IA
 

@@ -52,8 +52,19 @@ class _DebtsScreenState extends State<DebtsScreen> {
   @override
   void initState() {
     super.initState();
+    AppState.instance.dataVersionNotifier.addListener(_onDataChanged);
     _loadSettings();
     _load();
+  }
+
+  @override
+  void dispose() {
+    AppState.instance.dataVersionNotifier.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
+  void _onDataChanged() {
+    if (mounted) _load();
   }
 
   Future<void> _loadSettings() async {
@@ -220,7 +231,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
                         await _service.payDebt(debt.id, v,
                             cuotas: int.tryParse(cuotas.text) ?? 1);
                         if (ctx.mounted) Navigator.of(ctx).pop();
-                        _load();
+                        AppState.instance.notifyDataChanged();
                         _askRegisterExpense(debt.name, v);
                       } catch (e) {
                         setDialogState(() => processing = false);
@@ -286,6 +297,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
         type: 'expense',
         note: result.isEmpty ? 'Pago $debtName' : result,
       );
+      AppState.instance.notifyDataChanged();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Gasto registrado')),
@@ -395,7 +407,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
                         double.tryParse(payment.text.replaceAll(',', '.')),
                   );
                   if (ctx.mounted) Navigator.of(ctx).pop();
-                  _load();
+                  AppState.instance.notifyDataChanged();
                 } catch (e) {
                   if (ctx.mounted) {
                     ScaffoldMessenger.of(ctx)
@@ -457,7 +469,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
                         : 0,
                   );
                   if (ctx.mounted) Navigator.of(ctx).pop();
-                  _load();
+                  AppState.instance.notifyDataChanged();
                 } catch (e) {
                   if (ctx.mounted) {
                     ScaffoldMessenger.of(ctx)
@@ -476,7 +488,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
   Future<void> _toggleNotify(Debt debt) async {
     try {
       await _service.updateDebt(debt.id, notifyEnabled: !debt.notifyEnabled);
-      _load();
+      AppState.instance.notifyDataChanged();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -506,7 +518,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
     if (confirm != true) return;
     try {
       await _service.deleteDebt(debt.id);
-      _load();
+      AppState.instance.notifyDataChanged();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -551,7 +563,6 @@ class _DebtsScreenState extends State<DebtsScreen> {
           await Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const AddDebtScreen()),
           );
-          if (mounted) _load();
         },
         child: const Icon(Icons.add),
       ),
@@ -560,11 +571,36 @@ class _DebtsScreenState extends State<DebtsScreen> {
 
   Widget _buildBody() {
     if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) return Center(child: Text('Error: $_error'));
+    if (_error != null) {
+      return RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 120),
+              child: Center(child: Text('Error: $_error')),
+            ),
+          ],
+        ),
+      );
+    }
     if (_debts.isEmpty) {
-      return const Center(
-        child: Text('No tienes deudas registradas.\nPulsa + para añadir una.',
-            textAlign: TextAlign.center),
+      return RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            Padding(
+              padding: EdgeInsets.only(top: 120),
+              child: Center(
+                child: Text(
+                    'No tienes deudas registradas.\nPulsa + para añadir una.',
+                    textAlign: TextAlign.center),
+              ),
+            ),
+          ],
+        ),
       );
     }
     final total = _debts.fold<double>(0, (s, d) => s + d.balance);
@@ -578,10 +614,13 @@ class _DebtsScreenState extends State<DebtsScreen> {
   }
 
   Widget _buildList(double total) {
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 88),
-      itemCount: _debts.length,
-      itemBuilder: (context, index) {
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 88),
+        itemCount: _debts.length,
+        itemBuilder: (context, index) {
         final d = _debts[index];
         final late = d.status == 'late';
         final ratio = total > 0 ? (d.balance / total).clamp(0.0, 1.0) : 0.0;
@@ -656,6 +695,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
           ),
         );
       },
+      ),
     );
   }
 }

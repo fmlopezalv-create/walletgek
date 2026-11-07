@@ -309,6 +309,7 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
         paidInstallments: paidInstallments,
         details: details.isEmpty ? null : details,
       );
+      AppState.instance.notifyDataChanged();
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       setState(() => _error = e.toString());

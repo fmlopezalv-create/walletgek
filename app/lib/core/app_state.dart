@@ -20,6 +20,15 @@ class AppState {
   final ValueNotifier<String> profilePhotoNotifier = ValueNotifier('');
   final ValueNotifier<bool> premiumNotifier = ValueNotifier(false);
 
+  /// Señal global de "los datos cambiaron". Cada mutación exitosa
+  /// (crear/editar/borrar/pagar/cobrar) debe llamar a [notifyDataChanged]
+  /// para que todas las pantallas abiertas se recarguen en tiempo real.
+  final ValueNotifier<int> dataVersionNotifier = ValueNotifier<int>(0);
+
+  void notifyDataChanged() {
+    dataVersionNotifier.value++;
+  }
+
   String get symbol => currencySymbol(currencyCode);
 
   Future<void> load() async {

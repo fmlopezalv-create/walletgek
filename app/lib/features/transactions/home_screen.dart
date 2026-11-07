@@ -16,6 +16,7 @@ import '../budget/budget_model.dart';
 import '../budget/budget_screen.dart';
 import '../budget/budget_service.dart';
 import '../dashboard/dashboard_service.dart';
+import '../dashboard/emergency_fund_service.dart';
 import '../dashboard/home_dashboard_model.dart';
 import '../debts/debt_colors.dart';
 import '../debts/debt_plan_screen.dart';
@@ -49,11 +50,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final _profileService = ProfileService();
   final _budgetService = BudgetService();
   final _receivableService = ReceivableService();
+  final _emergencyFundService = EmergencyFundService();
 
   HomeDashboard? _home;
   List<Transaction> _transactions = [];
   BudgetSummary? _budgetSummary;
   List<Receivable> _receivables = [];
+  EmergencyFund? _emergencyFund;
   bool _loading = true;
   bool _hideBalance = false;
   String? _error;
@@ -61,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
   List<String> _sectionOrder = const [
     'premium', 'upcoming', 'debts', 'receivables', 'expenses', 'budget',
-    'strategy', 'babylon', 'recent',
+    'emergency', 'strategy', 'babylon', 'recent',
   ];
   Set<String> _hiddenSections = {};
 
@@ -81,6 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    AppState.instance.dataVersionNotifier.addListener(_onDataChanged);
     _load();
     _loadSectionOrder();
     _loadHiddenSections();
@@ -91,10 +95,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (raw == null) return;
     try {
       final list = (jsonDecode(raw) as List).cast<String>();
-      if (list.length == _sectionOrder.length &&
-          list.toSet().containsAll(_sectionOrder)) {
-        if (mounted) setState(() => _sectionOrder = list);
+      // Conserva el orden guardado y añade las secciones nuevas que falten
+      // (p. ej. "emergency"), descartando ids desconocidos.
+      final saved = list.where(_sectionOrder.contains).toList();
+      for (final id in _sectionOrder) {
+        if (!saved.contains(id)) saved.add(id);
       }
+      if (mounted) setState(() => _sectionOrder = saved);
     } catch (_) {}
   }
 
@@ -116,6 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    AppState.instance.dataVersionNotifier.removeListener(_onDataChanged);
     _pageController.dispose();
     super.dispose();
   }
@@ -155,7 +163,16 @@ class _HomeScreenState extends State<HomeScreen> {
       final receivables = await _receivableService.listReceivables();
       if (mounted) setState(() => _receivables = receivables);
     } catch (_) {}
+    // Fondo de emergencia (no bloquea si falla).
+    try {
+      final fund = await _emergencyFundService.getEmergencyFund();
+      if (mounted) setState(() => _emergencyFund = fund);
+    } catch (_) {}
     if (mounted) setState(() => _loading = false);
+  }
+
+  void _onDataChanged() {
+    if (mounted) _load();
   }
 
   String _formatDate(DateTime d) {
@@ -183,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Pago de "${p.name}" registrado')),
         );
-        _load();
+        AppState.instance.notifyDataChanged();
       }
     } catch (e) {
       if (mounted) {
@@ -237,7 +254,6 @@ class _HomeScreenState extends State<HomeScreen> {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => AddTransactionScreen(initialType: type)),
     );
-    if (mounted) _load();
   }
 
   void _toggleHide() {
@@ -338,6 +354,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return _home != null ? _expensesCard(_home!) : const SizedBox.shrink();
       case 'budget':
         return _budgetCard();
+      case 'emergency':
+        return _emergencyCard();
       case 'strategy':
         return _strategyCard();
       case 'babylon':
@@ -363,13 +381,17 @@ class _HomeScreenState extends State<HomeScreen> {
             controller: _pageController,
             itemCount: pages.length,
             itemBuilder: (context, index) => LayoutBuilder(
-              builder: (context, constraints) => SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - 16,
+              builder: (context, constraints) => RefreshIndicator(
+                onRefresh: _load,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight - 16,
+                    ),
+                    child: pages[index],
                   ),
-                  child: pages[index],
                 ),
               ),
             ),
@@ -491,6 +513,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return 'Gastos del mes';
       case 'budget':
         return 'Presupuesto';
+      case 'emergency':
+        return 'Fondo de emergencia';
       case 'strategy':
         return 'Estrategia de pago';
       case 'babylon':
@@ -748,7 +772,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: up ? AppColors.emerald : AppColors.coral),
                       const SizedBox(width: 4),
                       Text(
-                        '${up ? '+' : ''}${variation.toStringAsFixed(0)}%',
+                        '${up ? '+' : ''}${variation.toStringAsFixed(1)}%',
                         style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -991,6 +1015,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontSize: 12,
               ),
             ),
+            const SizedBox(width: 4),
+            Tooltip(
+              message:
+                  '50% tasa de ahorro (ingresos − gastos / ingresos) + '
+                  '50% carga de deuda (pagos de deuda / ingresos).',
+              child: Icon(
+                Icons.info_outline,
+                size: 14,
+                color: Colors.white.withValues(alpha: 0.6),
+              ),
+            ),
             const Spacer(),
             Text(
               '${score.round()}%',
@@ -1072,9 +1107,19 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 4),
           if (items.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text('No tienes pagos próximos.'),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text('No tienes pagos próximos.'),
+                ),
+                TextButton.icon(
+                  onPressed: () => widget.onSwitchTab?.call(1),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Añadir deuda'),
+                ),
+              ],
             )
           else
             for (var i = 0; i < items.length; i++) ...[
@@ -1213,9 +1258,22 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 4),
           if (_receivables.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text('No tienes dinero por cobrar.'),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text('No tienes dinero por cobrar.'),
+                ),
+                TextButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const ReceivablesScreen()),
+                  ),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Registrar cobro'),
+                ),
+              ],
             )
           else ...[
             Text(
@@ -1266,14 +1324,27 @@ class _HomeScreenState extends State<HomeScreen> {
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           if (cats.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text('Aún no hay gastos este mes.'),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text('Aún no hay gastos este mes.'),
+                ),
+                TextButton.icon(
+                  onPressed: () => _openAdd('expense'),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Registrar gasto'),
+                ),
+              ],
             )
           else
             Row(
               children: [
-                SizedBox(width: 140, height: 140, child: _donut(cats)),
+                SizedBox(
+                    width: 140,
+                    height: 140,
+                    child: _donut(cats, home.expense)),
                 const SizedBox(width: 16),
                 Expanded(child: _categoryLegend(cats)),
               ],
@@ -1283,7 +1354,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _donut(List<TopCategory> cats) {
+  Widget _donut(List<TopCategory> cats, double total) {
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -1305,10 +1376,14 @@ class _HomeScreenState extends State<HomeScreen> {
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('${cats.length}',
+            FittedBox(
+              child: Text(
+                '${AppState.instance.symbol}${total.toStringAsFixed(0)}',
                 style: const TextStyle(
-                    fontWeight: FontWeight.w700, fontSize: 18)),
-            const Text('cat.', style: TextStyle(fontSize: 10)),
+                    fontWeight: FontWeight.w700, fontSize: 15),
+              ),
+            ),
+            const Text('gastado', style: TextStyle(fontSize: 10)),
           ],
         ),
       ],
@@ -1467,6 +1542,161 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _emergencyCard() {
+    final f = _emergencyFund;
+    return _sectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.shield_outlined,
+                  color: AppColors.champagneGold),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Fondo de emergencia',
+                    style: Theme.of(context).textTheme.titleMedium),
+              ),
+              IconButton(
+                onPressed: _editEmergencyFund,
+                icon: const Icon(Icons.edit_outlined, size: 20),
+                tooltip: 'Configurar fondo',
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          if (f == null)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text('Cargando…'),
+            )
+          else if (f.essentialMonthly <= 0) ...[
+            Text(
+              'Registra gastos para calcular cuánto necesitas ahorrar.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _editEmergencyFund,
+                icon: const Icon(Icons.tune, size: 18),
+                label: const Text('Configurar objetivo'),
+              ),
+            ),
+          ] else ...[
+            Text(
+              'Meta: ${f.months} meses × '
+              '${AppState.instance.formatAmount(f.essentialMonthly)} '
+              '= ${AppState.instance.formatAmount(f.goal)}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Ahorrado ${AppState.instance.formatAmount(f.saved)}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Text('${(f.progress * 100).round()}%',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.champagneGold,
+                    )),
+              ],
+            ),
+            const SizedBox(height: 8),
+            AnimatedProgress(
+              value: f.progress.clamp(0.0, 1.0),
+              color: AppColors.champagneGold,
+              height: 8,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              f.progress >= 1
+                  ? '¡Fondo completo! 🎉'
+                  : 'Te faltan ${AppState.instance.formatAmount((f.goal - f.saved).clamp(0, double.infinity))}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editEmergencyFund() async {
+    final current = _emergencyFund;
+    var months = (current?.months ?? 3).clamp(3, 6).toInt();
+    final savedController = TextEditingController(
+        text: (current?.saved ?? 0).toStringAsFixed(2));
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Fondo de emergencia'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Objetivo: meses de gastos esenciales que quieres tener cubiertos.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int>(
+                initialValue: months,
+                decoration:
+                    const InputDecoration(labelText: 'Meses de cobertura'),
+                items: [3, 4, 5, 6]
+                    .map((m) =>
+                        DropdownMenuItem(value: m, child: Text('$m meses')))
+                    .toList(),
+                onChanged: (v) =>
+                    setDialogState(() => months = v ?? 3),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: savedController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'Ahorrado hasta hoy',
+                  prefixText: '${AppState.instance.symbol} ',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancelar')),
+            FilledButton(
+              onPressed: () async {
+                final saved = double.tryParse(
+                    savedController.text.replaceAll(',', '.'));
+                try {
+                  await _emergencyFundService.updateEmergencyFund(
+                    months: months,
+                    saved: saved,
+                  );
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                  AppState.instance.notifyDataChanged();
+                } catch (e) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx)
+                        .showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
+                }
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
+        ),
       ),
     );
   }

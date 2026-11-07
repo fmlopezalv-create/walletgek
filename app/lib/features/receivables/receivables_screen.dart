@@ -24,7 +24,18 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
   @override
   void initState() {
     super.initState();
+    AppState.instance.dataVersionNotifier.addListener(_onDataChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    AppState.instance.dataVersionNotifier.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
+  void _onDataChanged() {
+    if (mounted) _load();
   }
 
   Future<void> _load() async {
@@ -69,7 +80,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
         );
       }),
     );
-    if (mounted) _load();
+    if (mounted) AppState.instance.notifyDataChanged();
   }
 
   Future<void> _collect(Receivable r) async {
@@ -109,7 +120,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
     if (amount == null || amount <= 0) return;
     try {
       await _service.collectReceivable(r.id, amount);
-      if (mounted) _load();
+      if (mounted) AppState.instance.notifyDataChanged();
       _askRegisterIncome(r.person, amount);
     } catch (e) {
       if (mounted) {
@@ -160,6 +171,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
         type: 'income',
         note: result.isEmpty ? 'Cobro $person' : result,
       );
+      AppState.instance.notifyDataChanged();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Ingreso registrado')),
@@ -190,7 +202,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
         },
       ),
     );
-    if (mounted) _load();
+    if (mounted) AppState.instance.notifyDataChanged();
   }
 
   Future<void> _delete(Receivable r) async {
@@ -213,13 +225,13 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
     );
     if (confirm != true) return;
     await _service.deleteReceivable(r.id);
-    if (mounted) _load();
+    if (mounted) AppState.instance.notifyDataChanged();
   }
 
   Future<void> _toggleStatus(Receivable r) async {
     final newStatus = r.status == 'collected' ? 'pending' : 'collected';
     await _service.updateReceivable(r.id, status: newStatus);
-    if (mounted) _load();
+    if (mounted) AppState.instance.notifyDataChanged();
   }
 
   @override
@@ -280,16 +292,27 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
     if (_error != null) {
       return Center(child: Text('Error: $_error'));
     }
-    if (_receivables.isEmpty) {
-      return const Center(
-        child: Text('No tienes cobros pendientes.\nPulsa + para registrar uno.',
-            textAlign: TextAlign.center),
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
-      itemCount: _receivables.length,
-      itemBuilder: (context, index) {
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: _receivables.isEmpty
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                Padding(
+                  padding: EdgeInsets.only(top: 120),
+                  child: Center(
+                    child: Text(
+                        'No tienes cobros pendientes.\nPulsa + para registrar uno.',
+                        textAlign: TextAlign.center),
+                  ),
+                ),
+              ],
+            )
+          : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
+              itemCount: _receivables.length,
+              itemBuilder: (context, index) {
         final r = _receivables[index];
         final collected = r.status == 'collected';
         return Card(
@@ -353,6 +376,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
           ),
         );
       },
+      ),
     );
   }
 }

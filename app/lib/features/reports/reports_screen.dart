@@ -8,7 +8,9 @@ import '../budget/budget_screen.dart';
 import '../dashboard/dashboard_model.dart';
 import '../dashboard/dashboard_service.dart';
 import '../debts/debt_colors.dart';
+import '../debts/debt_model.dart';
 import '../debts/debt_plan_screen.dart';
+import '../debts/debt_service.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -20,14 +22,27 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> {
   final _budgetService = BudgetService();
   final _dashboardService = DashboardService();
+  final _debtService = DebtService();
   BudgetSummary? _summary;
   HealthSummary? _health;
+  List<Debt> _debts = [];
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
+    AppState.instance.dataVersionNotifier.addListener(_onDataChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    AppState.instance.dataVersionNotifier.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
+  void _onDataChanged() {
+    if (mounted) _load();
   }
 
   Future<void> _load() async {
@@ -39,6 +54,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
     try {
       final h = await _dashboardService.getHealth();
       if (mounted) setState(() => _health = h);
+    } catch (_) {}
+    try {
+      final debts = await _debtService.listDebts();
+      if (mounted) setState(() => _debts = debts);
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
@@ -73,6 +92,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 const SizedBox(height: 16),
                 if (_summary != null) _budgetCard(context, _summary!),
                 const SizedBox(height: 16),
+                if (_debts.isNotEmpty) _debtsCard(context),
+                const SizedBox(height: 16),
                 _shortcutsCard(context),
               ],
             ],
@@ -89,8 +110,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Salud financiera',
-                style: Theme.of(context).textTheme.titleMedium),
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Salud financiera',
+                      style: Theme.of(context).textTheme.titleMedium),
+                ),
+                Tooltip(
+                  message:
+                      '50% tasa de ahorro (ingresos − gastos / ingresos) + '
+                      '50% carga de deuda (pagos de deuda / ingresos).',
+                  child: const Icon(Icons.info_outline,
+                      size: 16, color: AppColors.slate),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -102,7 +136,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 Expanded(
                   child: _metric(context, 'Deuda / ingreso',
                       h.dti == null ? '—' : '${h.dti!.toStringAsFixed(0)}%',
-                      _statusColor(h.dti, (v) => v <= 36, (v) => v <= 43)),
+                      _statusColor(h.dti, (v) => v <= 36, (v) => v <= 50)),
                 ),
               ],
             ),
@@ -192,10 +226,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Widget _budgetCard(BuildContext context, BudgetSummary s) {
     final app = AppState.instance;
     final spentCats = s.categories.where((c) => c.spent > 0).toList();
-    final pct = s.totalBudget > 0
-        ? (s.totalSpent / s.totalBudget).clamp(0.0, 1.0)
+    final budget = s.globalBudget ?? s.totalBudget;
+    final pct = budget > 0
+        ? (s.totalSpent / budget).clamp(0.0, 1.0)
         : 0.0;
-    final over = s.totalBudget > 0 && s.totalSpent > s.totalBudget;
+    final over = budget > 0 && s.totalSpent > budget;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -218,7 +253,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              '${app.formatAmount(s.totalSpent)} de ${app.formatAmount(s.totalBudget)}',
+              '${app.formatAmount(s.totalSpent)} de ${app.formatAmount(budget)}',
               style: Theme.of(context)
                   .textTheme
                   .titleLarge
@@ -237,7 +272,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             if (over) ...[
               const SizedBox(height: 6),
               Text(
-                  'Sobregasto de ${app.formatAmount(s.totalSpent - s.totalBudget)}',
+                  'Sobregasto de ${app.formatAmount(s.totalSpent - budget)}',
                   style: const TextStyle(color: AppColors.coral)),
             ],
             if (spentCats.isNotEmpty) ...[
@@ -290,6 +325,51 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _debtsCard(BuildContext context) {
+    final total = _debts.fold<double>(0, (s, d) => s + d.balance);
+    final monthly = _debts.fold<double>(0, (s, d) => s + d.minimumPayment);
+    final lateCount = _debts.where((d) => d.status == 'late').length;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Deudas',
+                      style: Theme.of(context).textTheme.titleMedium),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const DebtPlanScreen()),
+                  ),
+                  child: const Text('Ver plan'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              AppState.instance.formatAmount(total),
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${_debts.length} deuda${_debts.length == 1 ? '' : 's'} activa${_debts.length == 1 ? '' : 's'} · '
+              'cuota mensual ${AppState.instance.formatAmount(monthly)}'
+              '${lateCount > 0 ? ' · $lateCount atrasada${lateCount == 1 ? '' : 's'}' : ''}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
     );
   }
 

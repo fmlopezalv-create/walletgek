@@ -26,7 +26,18 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   @override
   void initState() {
     super.initState();
+    AppState.instance.dataVersionNotifier.addListener(_onDataChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    AppState.instance.dataVersionNotifier.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
+  void _onDataChanged() {
+    if (mounted) _load();
   }
 
   Future<void> _load() async {
@@ -75,7 +86,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         },
       ),
     );
-    if (mounted) _load();
+    if (mounted) AppState.instance.notifyDataChanged();
   }
 
   Future<void> _delete(Transaction t) async {
@@ -100,7 +111,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     if (confirm != true) return;
     try {
       await _service.deleteTransaction(t.id);
-      if (mounted) _load();
+      if (mounted) AppState.instance.notifyDataChanged();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -144,7 +155,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           await Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
           );
-          if (mounted) _load();
         },
         child: const Icon(Icons.add),
       ),
@@ -159,20 +169,32 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       return Center(child: Text('Error: $_error'));
     }
     final list = _filtered;
-    if (list.isEmpty) {
-      return const Center(
-        child: Text('No hay movimientos.\nPulsa + para registrar uno.',
-            textAlign: TextAlign.center),
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 88),
-      itemCount: list.length,
-      itemBuilder: (context, index) {
-        final t = list[index];
-        final isIncome = t.type == 'income';
-        return _transactionCard(t, isIncome);
-      },
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: list.isEmpty
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                Padding(
+                  padding: EdgeInsets.only(top: 120),
+                  child: Center(
+                    child: Text(
+                        'No hay movimientos.\nPulsa + para registrar uno.',
+                        textAlign: TextAlign.center),
+                  ),
+                ),
+              ],
+            )
+          : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 88),
+              itemCount: list.length,
+              itemBuilder: (context, index) {
+                final t = list[index];
+                final isIncome = t.type == 'income';
+                return _transactionCard(t, isIncome);
+              },
+            ),
     );
   }
 

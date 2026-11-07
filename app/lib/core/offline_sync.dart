@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'api_client.dart';
+import 'app_state.dart';
 import 'connectivity.dart';
 import 'offline_store.dart';
 
@@ -58,6 +59,9 @@ class OfflineSync {
         }
       }
       await _refreshPendingCount();
+      if (remaining.isEmpty) {
+        AppState.instance.notifyDataChanged();
+      }
     } finally {
       _syncing = false;
     }

@@ -14,6 +14,9 @@ const publicUser = (user) => ({
   isPremium: user.isPremium ?? false,
   monthlyBudget:
     user.monthlyBudget != null ? Number(user.monthlyBudget) : null,
+  emergencyFundMonths: user.emergencyFundMonths ?? 3,
+  emergencyFundSaved:
+    user.emergencyFundSaved != null ? Number(user.emergencyFundSaved) : 0,
 });
 
 function normalizeEmail(email) {
