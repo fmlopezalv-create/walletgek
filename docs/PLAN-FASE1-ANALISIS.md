@@ -274,9 +274,9 @@ Una historia de usuario está **Done** sólo si se cumplen **todas** estas condi
 | HU-4.1 | Quiero un asesor IA que analice mis datos reales | Chat que responde usando ingresos, gastos, deudas y presupuesto del usuario | 8 | Must | ✅ Hecho |
 | HU-4.2 | Quiero que el asesor sea seguro y honesto | Guardrails (sin consejo de inversión, sin prometer rendimientos) y disclaimer visible | 3 | Must | ✅ Hecho |
 | HU-4.3 | Quiero una suscripción Premium para desbloquear el asesor | Estado premium por usuario; activación (placeholder de pago); asesor requiere premium | 5 | Must | ✅ Hecho |
-| HU-4.4 | Quiero historial de conversación persistente | Mensajes y respuestas guardados por usuario | 5 | Could | ⬜ Pendiente |
+| HU-4.4 | Quiero historial de conversación persistente | Mensajes y respuestas guardados por usuario | 5 | Could | ✅ Hecho |
 
-**Total Sprint 4: 16 pts (11 hechos + 5 pendiente).**
+**Total Sprint 4: 16 pts (16 hechos).**
 
 ### Sprint 5 — Pulido, seguridad, pruebas y despliegue
 
