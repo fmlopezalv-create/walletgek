@@ -14,12 +14,14 @@ class ReceivableService {
     required double amount,
     String? note,
     DateTime? dueDate,
+    Map<String, dynamic>? details,
   }) async {
     final body = <String, dynamic>{
       'person': person,
       'amount': amount,
       'note': note,
       'dueDate': dueDate?.toIso8601String(),
+      'details': details,
     };
     final data = await ApiClient.instance.post('/receivables', body);
     return Receivable.fromJson(data as Map<String, dynamic>);
@@ -38,6 +40,7 @@ class ReceivableService {
     String? note,
     DateTime? dueDate,
     String? status,
+    Map<String, dynamic>? details,
   }) async {
     final body = <String, dynamic>{};
     if (person != null) body['person'] = person;
@@ -45,6 +48,7 @@ class ReceivableService {
     if (note != null) body['note'] = note;
     if (dueDate != null) body['dueDate'] = dueDate.toIso8601String();
     if (status != null) body['status'] = status;
+    if (details != null) body['details'] = details;
     final data = await ApiClient.instance.patch('/receivables/$id', body);
     return Receivable.fromJson(data as Map<String, dynamic>);
   }

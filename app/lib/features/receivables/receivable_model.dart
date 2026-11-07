@@ -5,6 +5,7 @@ class Receivable {
   final String? note;
   final DateTime? dueDate;
   final String status; // pending | collected
+  final Map<String, dynamic>? details;
 
   Receivable({
     required this.id,
@@ -13,6 +14,7 @@ class Receivable {
     this.note,
     this.dueDate,
     this.status = 'pending',
+    this.details,
   });
 
   factory Receivable.fromJson(Map<String, dynamic> json) => Receivable(
@@ -24,6 +26,7 @@ class Receivable {
             ? DateTime.tryParse(json['dueDate'] as String)
             : null,
         status: json['status'] as String? ?? 'pending',
+        details: json['details'] as Map<String, dynamic>?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -33,5 +36,6 @@ class Receivable {
         'note': note,
         'dueDate': dueDate?.toIso8601String(),
         'status': status,
+        'details': details,
       };
 }

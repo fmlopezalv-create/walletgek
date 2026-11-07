@@ -56,12 +56,14 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
   Future<void> _create() async {
     await showDialog<void>(
       context: context,
-      builder: (ctx) => _ReceivableForm(onSave: (person, amount, note, dueDate) async {
+      builder: (ctx) => _ReceivableForm(
+          onSave: (person, amount, note, dueDate, details) async {
         await _service.createReceivable(
           person: person,
           amount: amount,
           note: note,
           dueDate: dueDate,
+          details: details,
         );
       }),
     );
@@ -115,13 +117,14 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
       context: context,
       builder: (ctx) => _ReceivableForm(
         initial: r,
-        onSave: (person, amount, note, dueDate) async {
+        onSave: (person, amount, note, dueDate, details) async {
           await _service.updateReceivable(
             r.id,
             person: person,
             amount: amount,
             note: note,
             dueDate: dueDate,
+            details: details,
           );
         },
       ),
@@ -295,8 +298,8 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
 
 class _ReceivableForm extends StatefulWidget {
   final Receivable? initial;
-  final Future<void> Function(
-      String person, double amount, String? note, DateTime? dueDate) onSave;
+  final Future<void> Function(String person, double amount, String? note,
+      DateTime? dueDate, Map<String, dynamic>? details) onSave;
 
   const _ReceivableForm({this.initial, required this.onSave});
 
@@ -308,7 +311,15 @@ class _ReceivableFormState extends State<_ReceivableForm> {
   late final TextEditingController _person;
   late final TextEditingController _amount;
   late final TextEditingController _note;
+  late final TextEditingController _interest;
+  late final TextEditingController _quota;
+  late final TextEditingController _months;
   DateTime? _dueDate;
+
+  // Tipo de cobro: 'simple' | 'custom'
+  String _type = 'simple';
+  final Set<String> _customFields = {};
+
   bool _saving = false;
   String? _error;
 
@@ -320,6 +331,21 @@ class _ReceivableFormState extends State<_ReceivableForm> {
         text: widget.initial?.amount.toStringAsFixed(2) ?? '');
     _note = TextEditingController(text: widget.initial?.note ?? '');
     _dueDate = widget.initial?.dueDate;
+
+    final details = widget.initial?.details;
+    _interest = TextEditingController(
+        text: details?['interest_monthly']?.toString() ?? '');
+    _quota = TextEditingController(text: details?['quota']?.toString() ?? '');
+    _months = TextEditingController(text: details?['months']?.toString() ?? '');
+
+    if (details != null) {
+      _type = 'custom';
+      if (details['interest_monthly'] != null) {
+        _customFields.add('interest_monthly');
+      }
+      if (details['quota'] != null) _customFields.add('quota');
+      if (details['months'] != null) _customFields.add('months');
+    }
   }
 
   @override
@@ -327,6 +353,9 @@ class _ReceivableFormState extends State<_ReceivableForm> {
     _person.dispose();
     _amount.dispose();
     _note.dispose();
+    _interest.dispose();
+    _quota.dispose();
+    _months.dispose();
     super.dispose();
   }
 
@@ -338,6 +367,24 @@ class _ReceivableFormState extends State<_ReceivableForm> {
       lastDate: DateTime(2100),
     );
     if (picked != null) setState(() => _dueDate = picked);
+  }
+
+  double? _num(TextEditingController c) =>
+      double.tryParse(c.text.replaceAll(',', '.'));
+
+  Map<String, dynamic>? _buildDetails() {
+    if (_type != 'custom') return null;
+    final details = <String, dynamic>{};
+    if (_customFields.contains('interest_monthly')) {
+      details['interest_monthly'] = _num(_interest);
+    }
+    if (_customFields.contains('quota')) {
+      details['quota'] = _num(_quota);
+    }
+    if (_customFields.contains('months')) {
+      details['months'] = int.tryParse(_months.text);
+    }
+    return details.isEmpty ? null : details;
   }
 
   Future<void> _save() async {
@@ -357,7 +404,7 @@ class _ReceivableFormState extends State<_ReceivableForm> {
     });
     try {
       await widget.onSave(
-          person, amount, _note.text.trim(), _dueDate);
+          person, amount, _note.text.trim(), _dueDate, _buildDetails());
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       setState(() => _error = e.toString());
@@ -374,6 +421,23 @@ class _ReceivableFormState extends State<_ReceivableForm> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Viñeta de tipo de cobro
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                    value: 'simple',
+                    label: Text('Simple'),
+                    icon: Icon(Icons.person_outline)),
+                ButtonSegment(
+                    value: 'custom',
+                    label: Text('Personalizado'),
+                    icon: Icon(Icons.tune)),
+              ],
+              selected: {_type},
+              onSelectionChanged: (s) =>
+                  setState(() => _type = s.first),
+            ),
+            const SizedBox(height: 16),
             TextField(
               controller: _person,
               textCapitalization: TextCapitalization.words,
@@ -411,6 +475,47 @@ class _ReceivableFormState extends State<_ReceivableForm> {
               ),
               onTap: _pickDate,
             ),
+            if (_type == 'custom') ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              Text('Campos personalizados',
+                  style: Theme.of(context).textTheme.titleSmall),
+              _check('interest_monthly', 'Interés mensual (%)'),
+              _check('quota', 'Cuota'),
+              _check('months', 'Meses'),
+              if (_customFields.contains('interest_monthly')) ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _interest,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Interés mensual',
+                    suffixText: '%',
+                  ),
+                ),
+              ],
+              if (_customFields.contains('quota')) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _quota,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Cuota',
+                    prefixText: '${AppState.instance.symbol} ',
+                  ),
+                ),
+              ],
+              if (_customFields.contains('months')) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _months,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Meses'),
+                ),
+              ],
+            ],
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!,
@@ -434,6 +539,24 @@ class _ReceivableFormState extends State<_ReceivableForm> {
               : const Text('Guardar'),
         ),
       ],
+    );
+  }
+
+  Widget _check(String key, String label) {
+    final on = _customFields.contains(key);
+    return CheckboxListTile(
+      value: on,
+      onChanged: (v) => setState(() {
+        if (v == true) {
+          _customFields.add(key);
+        } else {
+          _customFields.remove(key);
+        }
+      }),
+      title: Text(label),
+      controlAffinity: ListTileControlAffinity.leading,
+      contentPadding: EdgeInsets.zero,
+      dense: true,
     );
   }
 }

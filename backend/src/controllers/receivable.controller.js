@@ -15,7 +15,7 @@ async function listReceivables(req, res) {
 }
 
 async function createReceivable(req, res) {
-  const { person, amount, note, dueDate } = req.body;
+  const { person, amount, note, dueDate, details } = req.body;
   const trimmedPerson = person != null ? String(person).trim() : '';
   const parsedAmount = parseFloat(amount);
   if (!trimmedPerson || !parsedAmount || parsedAmount <= 0) {
@@ -30,6 +30,7 @@ async function createReceivable(req, res) {
       amount: parsedAmount,
       note: note || null,
       dueDate: parseDate(dueDate),
+      details: details || undefined,
       userId: req.userId,
     },
   });
@@ -61,7 +62,7 @@ async function collectReceivable(req, res) {
 
 async function updateReceivable(req, res) {
   const { id } = req.params;
-  const { person, amount, note, dueDate, status } = req.body;
+  const { person, amount, note, dueDate, status, details } = req.body;
 
   const receivable = await prisma.receivable.findFirst({
     where: { id, userId: req.userId },
@@ -86,6 +87,7 @@ async function updateReceivable(req, res) {
   if (status !== undefined) {
     data.status = status === 'collected' ? 'collected' : 'pending';
   }
+  if (details !== undefined) data.details = details;
 
   const updated = await prisma.receivable.update({ where: { id }, data });
   return res.json(updated);

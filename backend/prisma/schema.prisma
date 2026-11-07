@@ -90,6 +90,7 @@ model Receivable {
   note      String?
   dueDate   DateTime?
   status    String    @default("pending") // pending | collected
+  details   Json?
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime  @default(now())
